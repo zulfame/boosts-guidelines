@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.1 (2026-11-11)
+
+Perbaikan dua false positive di gate yang ditemukan saat dipakai di sesi nyata:
+
+- Stop gate hanya menghitung file sumber. Sebelumnya, database SQLite yang dipakai untuk session dan cache ikut terdeteksi sebagai perubahan dan memicu permintaan review. Daftar ekstensi diatur lewat `quality.source_extensions` di `boost-gate.json`.
+- Deteksi tulis lewat Bash tidak lagi menganggap operator `=>` dan `->` di dalam perintah sebagai redirect.
+
+Proyek yang sudah adopsi: salin ulang `template/.claude/hooks/boost-gate.php` dan `template/.claude/hooks/boost-quality.php` ke `.claude/hooks/` di proyek itu. Jangan memakai `--force` hanya untuk ini, karena opsi itu juga menimpa rule yang sudah diubah di proyek. `boost-gate.json` lama tetap berfungsi karena `source_extensions` punya nilai default.
+
 ## 1.0.0 (2026-11-09)
 
 Versi pertama.

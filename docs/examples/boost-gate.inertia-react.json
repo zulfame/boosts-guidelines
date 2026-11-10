@@ -91,6 +91,20 @@
             "resources/views",
             "tests"
         ],
+        "source_extensions": [
+            "php",
+            "js",
+            "jsx",
+            "ts",
+            "tsx",
+            "mjs",
+            "cjs",
+            "vue",
+            "svelte",
+            "css",
+            "scss",
+            "json"
+        ],
         "format": "vendor/bin/pint {files}",
         "static": "vendor/bin/phpstan analyse --no-progress --error-format=raw --memory-limit=1G {files}",
         "static_paths": [

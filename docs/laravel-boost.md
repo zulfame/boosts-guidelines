@@ -536,7 +536,7 @@ Setelah itu, ikuti isinya dan ulangi perubahan. Gate ini diatur di .claude/hooks
 
 Cara gate mengetahui apa yang sudah dilakukan agent: ia membaca file transcript sesi Claude Code dan mencari pemanggilan `Read`, `Skill`, `search-docs`, dan `Agent`. Pemanggilan yang gagal atau ditolak tidak dihitung. Setelah percakapan diringkas, hitungan dimulai dari nol, karena isi rules yang dibaca sebelumnya sudah tidak ada di konteks agent.
 
-Stop gate memeriksa file yang berubah sejak prompt terakhir: file yang diedit dengan tool edit, ditambah file di folder yang dipantau yang waktu modifikasinya lebih baru dari prompt. Dengan begitu, file yang ditulis lewat Bash atau `php artisan make:*` tetap ikut diperiksa. Agar tidak berputar tanpa akhir, Stop gate menahan paling banyak 3 kali per giliran. Setelah itu giliran dilepas dengan peringatan yang terlihat oleh user.
+Stop gate memeriksa file yang berubah sejak prompt terakhir: file yang diedit dengan tool edit, ditambah file di folder yang dipantau yang waktu modifikasinya lebih baru dari prompt. Dengan begitu, file yang ditulis lewat Bash atau `php artisan make:*` tetap ikut diperiksa. Hanya file sumber yang dihitung (ekstensi di `quality.source_extensions`, misalnya `php`, `js`, `ts`, `vue`, `svelte`, `css`, dan `json`), sehingga data runtime seperti database SQLite yang dipakai untuk session dan cache tidak memicu review. Agar tidak berputar tanpa akhir, Stop gate menahan paling banyak 3 kali per giliran. Setelah itu giliran dilepas dengan peringatan yang terlihat oleh user.
 
 ### Konfigurasi gate
 
@@ -547,7 +547,7 @@ Semua perilaku gate diatur di `.claude/hooks/boost-gate.json`, yang dibuat insta
 | `exempt` | Path yang tidak dijaga gate, misalnya `.claude/**`, `.ai/**`, dan `vendor/**` |
 | `skills` | Peta glob ke skill wajib, dibuat dari skill yang terpasang di `.claude/skills` |
 | `search_docs` | Apakah `search-docs` wajib, dan untuk path mana |
-| `quality` | Perintah format, static analysis, test, dan pemeriksaan frontend, folder yang dipantau, serta batas `max_blocks` |
+| `quality` | Perintah format, static analysis, test, dan pemeriksaan frontend, folder yang dipantau, ekstensi file sumber (`source_extensions`), serta batas `max_blocks` |
 | `review` | Apakah review wajib, nama subagent-nya, dan path yang memicu review |
 
 Rules yang wajib dibaca tidak diatur di sini. Gate mengambilnya langsung dari `.ai/rules/index.md`, jadi rule baru otomatis ikut dijaga.
@@ -598,7 +598,7 @@ Satu temuan dari sesi nyata: saat Read dan Edit dikirim dalam satu pesan, Claude
 ### Batasan yang perlu kamu tahu
 
 - **Dibaca belum tentu dipatuhi.** Gate hanya menjamin rules dibaca. Arch test dan reviewer yang menjaga isinya.
-- **Deteksi tulis lewat Bash adalah heuristik.** Gate mengenali redirect (`>`), `tee`, `sed -i`, `perl -i`, `cp`, dan `mv`. Cara lain, misalnya `php -r "file_put_contents(...)"`, lolos dari gate edit. Namun Stop gate tetap memeriksa file tersebut lewat waktu modifikasinya.
+- **Deteksi tulis lewat Bash adalah heuristik.** Gate mengenali redirect (`>` dan `>>`, tetapi bukan operator `=>` atau `->`), `tee`, `sed -i`, `perl -i`, `cp`, dan `mv`. Cara lain, misalnya `php -r "file_put_contents(...)"`, lolos dari gate edit. Namun Stop gate tetap memeriksa file tersebut lewat waktu modifikasinya.
 - **Biaya per giliran.** Stop gate menjalankan seluruh test setiap kali ada perubahan PHP, dan reviewer berjalan setiap ada perubahan kode aplikasi. Untuk suite yang lambat, ubah perintah `tests` (misalnya dengan `--parallel`). Untuk proyek kecil, review bisa dimatikan.
 - **Penolakan butuh sekitar 2 detik** karena percobaan ulang tadi. Edit yang diizinkan tidak terpengaruh.
 - **Penanda ringkasan percakapan belum terverifikasi di sesi nyata.** Gate mengenali penanda `compact_boundary` dan `isCompactSummary`. Jika penandanya ternyata berbeda, gate tetap menghitung bacaan sebelum ringkasan. Akibatnya gate jadi lebih longgar, bukan salah menolak.

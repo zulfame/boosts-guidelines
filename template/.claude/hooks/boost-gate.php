@@ -123,7 +123,9 @@ function boostBashWriteTargets(string $command): array
 {
     $targets = [];
 
-    if (preg_match_all('/(?<![0-9&<>])>{1,2}\s*([^\s;&|<>]+)/', $command, $matches)) {
+    // A redirect is ">" or ">>" not preceded by a digit, "&", "<", ">", "=" or "-",
+    // so PHP and JS operators such as "=>" and "->" inside commands are ignored.
+    if (preg_match_all('/(?<![0-9&<>=\-])>{1,2}\s*([^\s;&|<>]+)/', $command, $matches)) {
         $targets = array_merge($targets, $matches[1]);
     }
 

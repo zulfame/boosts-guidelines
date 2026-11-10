@@ -138,8 +138,14 @@ function boostChangedFiles(array $turnEvents, string $turnStartedAt, string $roo
         }
     }
 
-    $files = array_filter(array_unique($files), function (string $file) use ($root, $config): bool {
-        return is_file($root.'/'.$file) && ! boostMatchesAny($config['exempt'] ?? [], $file);
+    // Only source files count. Runtime data in watched folders (for example a
+    // SQLite database used for sessions and cache) changes on its own.
+    $sourceExtensions = $config['quality']['source_extensions'] ?? ['php', 'js', 'jsx', 'ts', 'tsx', 'mjs', 'cjs', 'vue', 'svelte', 'css', 'scss', 'json'];
+
+    $files = array_filter(array_unique($files), function (string $file) use ($root, $config, $sourceExtensions): bool {
+        return is_file($root.'/'.$file)
+            && in_array(strtolower(pathinfo($file, PATHINFO_EXTENSION)), $sourceExtensions, true)
+            && ! boostMatchesAny($config['exempt'] ?? [], $file);
     });
 
     sort($files);
@@ -234,7 +240,7 @@ function boostReviewProblem(array $turnEvents, array $changed, array $review): ?
 
 function boostLooksLikeWrite(string $command): bool
 {
-    return preg_match('/(?<![0-9&<>])>{1,2}\s*[^\s&]|\btee\s|\bsed\s+-i|\bperl\s+-[a-z]*i|\b(cp|mv)\s/', $command) === 1;
+    return preg_match('/(?<![0-9&<>=\-])>{1,2}\s*[^\s&]|\btee\s|\bsed\s+-i|\bperl\s+-[a-z]*i|\b(cp|mv)\s/', $command) === 1;
 }
 
 /**
