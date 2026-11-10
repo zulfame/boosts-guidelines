@@ -1,0 +1,49 @@
+{
+    "exempt": [
+        ".claude/**",
+        ".ai/**",
+        "vendor/**",
+        "node_modules/**",
+        "storage/**",
+        "bootstrap/cache/**",
+        "public/build/**",
+        "AGENTS.md",
+        "CLAUDE.md"
+    ],
+    "skills": [],
+    "search_docs": {
+        "required": true,
+        "globs": [
+            "app/**/*.php",
+            "routes/**/*.php",
+            "database/**/*.php",
+            "config/**/*.php",
+            "bootstrap/app.php",
+            "resources/js/**",
+            "resources/views/**"
+        ]
+    },
+    "quality": {
+        "enabled": true,
+        "max_blocks": 3,
+        "watch": ["app", "bootstrap/app.php", "config", "database", "routes", "resources/js", "resources/views", "tests"],
+        "format": "vendor/bin/pint {files}",
+        "static": "vendor/bin/phpstan analyse --no-progress --error-format=raw --memory-limit=1G {files}",
+        "static_paths": ["app/", "bootstrap/app.php", "config/", "database/", "routes/"],
+        "tests": "php artisan test --compact",
+        "frontend": ""
+    },
+    "review": {
+        "enabled": true,
+        "agent": "boost-reviewer",
+        "globs": [
+            "app/**",
+            "bootstrap/app.php",
+            "config/**",
+            "database/**",
+            "routes/**",
+            "resources/js/**",
+            "resources/views/**"
+        ]
+    }
+}

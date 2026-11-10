@@ -1,0 +1,51 @@
+{
+    "hooks": {
+        "SessionStart": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "php \"$CLAUDE_PROJECT_DIR/.claude/hooks/boost-context.php\"",
+                        "timeout": 15
+                    }
+                ]
+            }
+        ],
+        "PreToolUse": [
+            {
+                "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "php \"$CLAUDE_PROJECT_DIR/.claude/hooks/boost-gate.php\"",
+                        "timeout": 30,
+                        "onFailure": "block",
+                        "statusMessage": "Boost gate: memeriksa rules dan skill"
+                    }
+                ]
+            },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "php \"$CLAUDE_PROJECT_DIR/.claude/hooks/boost-gate.php\"",
+                        "timeout": 30
+                    }
+                ]
+            }
+        ],
+        "Stop": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "php \"$CLAUDE_PROJECT_DIR/.claude/hooks/boost-quality.php\"",
+                        "timeout": 600,
+                        "statusMessage": "Boost gate: format, static analysis, test, dan review"
+                    }
+                ]
+            }
+        ]
+    }
+}
