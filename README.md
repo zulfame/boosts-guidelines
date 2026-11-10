@@ -107,7 +107,7 @@ Rules berlaku untuk semua stack. Yang berbeda per stack hanya peta skill wajib d
 | `volt-development` | `resources/views/livewire/**`, `resources/views/pages/**` |
 | `fluxui-development` | `resources/views/**` |
 | `folio-routing` | `resources/views/pages/**` |
-| `tailwindcss-development` | `resources/css/**` |
+| `tailwindcss-development` | `resources/css/**`, `resources/views/**` |
 | `pennant-development` | `app/Features/**` |
 | `mcp-development` | `app/Mcp/**` |
 
@@ -115,20 +115,25 @@ Installer juga menyesuaikan pemeriksaan dengan alat yang ada di proyek. Static a
 
 ## Status verifikasi
 
-Diuji di Laravel 13.40, Laravel Boost 2.10.4, Pest 5.3, Larastan 3.14, PHP 8.5, dan Claude Code 2.1.
+Diuji di Laravel 13.40 dan 12.72, Laravel Boost 2.10.4, Pest 5.3, Larastan 3.14, PHP 8.5, Claude Code 2.1, dengan agent berbasis Sonnet 5.5.
 
-Sudah terbukti:
+Sudah terbukti, termasuk di sesi Claude Code nyata (headless) pada proyek Laravel 12 yang belum memakai Boost:
 
-- Gate edit menolak perubahan di sesi nyata, dan mengizinkannya setelah syarat dipenuhi.
-- Stop gate berjalan di sesi nyata, dan semua jalurnya lolos uji simulasi: error tipe, belum direview, reviewer `FAIL`, reviewer `PASS`, serta batas 3 kali.
-- Arch test menangkap pelanggaran yang disengaja.
-- Installer menghasilkan konfigurasi yang sama persis dengan konfigurasi yang disusun manual, aman dijalankan ulang, dan menggabungkan `.claude/settings.json` tanpa menghapus isinya.
+- **Adopsi oleh agent:** agent mengikuti `ADOPTION.md` dari awal, menangkap `node_modules` yang belum ada, berhenti meminta persetujuan dependensi, memasang Boost dan standar, mengisi `docs/decisions.md` dari kondisi kode nyata, dan tidak mengubah kode aplikasi. Sekitar 25 turn dan 2,7 menit.
+- **Hook SessionStart dan gate edit:** edit ke file model ditolak dengan daftar rule, skill, dan `search-docs`, lalu diizinkan setelah dipenuhi. Pada permintaan fitur, agent menyiapkan semuanya sendiri sebelum menulis (16 rule, 2 skill, dan `search-docs` sebelum edit pertama) sehingga gate tidak perlu menolak.
+- **Stop gate dan reviewer:** berjalan di alur nyata, termasuk batas penahanan dan penguraian vonis `PASS` dan `FAIL`.
+- **Fitur nyata:** agent membangun CRUD kategori produk memakai paket yang sudah terpasang (spatie permission dan activitylog), tanpa dependensi baru, dengan 35 test lolos.
+- **Perbaikan versi 1.1.0:** pada uji ulang validasi gate, reviewer hanya memblokir perubahan di baris yang berubah dan melaporkan pelanggaran lama sebagai catatan warisan. Agent tidak memperbaiki kode lama, `docs/decisions.md` tidak berubah, dan pengembalian perubahan uji lolos tanpa review baru. Dibanding versi 1.0.1, validasi itu turun dari 32 menjadi 21 turn.
+- **Installer:** menghasilkan konfigurasi yang sama dengan yang disusun manual, aman dijalankan ulang, menggabungkan `.claude/settings.json` tanpa menghapus isinya, dan memperbaiki `boost.json` yang kehilangan `agents`.
+- **Arch test** menangkap pelanggaran yang disengaja.
 
-Belum terbukti di sesi nyata, dan menjadi langkah validasi di [ADOPTION.md](ADOPTION.md):
+Belum terbukti, dan perlu diketahui:
 
-- hook SessionStart di sesi yang benar-benar baru,
-- subagent `boost-reviewer` dalam alur nyata,
-- reset hitungan gate setelah percakapan diringkas. Gate mengenali penanda `compact_boundary`. Jika penandanya berbeda, gate menjadi lebih longgar, bukan salah menolak.
+- Reset hitungan gate setelah percakapan diringkas (`/compact`). Gate mengenali penanda `compact_boundary`. Jika penandanya berbeda, gate menjadi lebih longgar, bukan salah menolak.
+- Permintaan fitur besar belum diulang dengan reviewer versi 1.1.0. Pada versi 1.0.1 fitur itu butuh 6 putaran review dan sekitar 66% durasi sesi. Penurunan jumlah putaran masih berupa harapan.
+- Proyek tanpa git hanya diuji dengan simulasi.
+- Setiap skenario nyata dijalankan satu kali dengan satu model, jadi perilaku bisa bervariasi.
+- MySQL, request paralel, dan tampilan di browser.
 
 Batasan yang diketahui ada di bagian "Batasan yang perlu kamu tahu" di [docs/laravel-boost.md](docs/laravel-boost.md#batasan-yang-perlu-kamu-tahu).
 

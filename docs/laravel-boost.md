@@ -536,7 +536,7 @@ Setelah itu, ikuti isinya dan ulangi perubahan. Gate ini diatur di .claude/hooks
 
 Cara gate mengetahui apa yang sudah dilakukan agent: ia membaca file transcript sesi Claude Code dan mencari pemanggilan `Read`, `Skill`, `search-docs`, dan `Agent`. Pemanggilan yang gagal atau ditolak tidak dihitung. Setelah percakapan diringkas, hitungan dimulai dari nol, karena isi rules yang dibaca sebelumnya sudah tidak ada di konteks agent.
 
-Stop gate memeriksa file yang berubah sejak prompt terakhir: file yang diedit dengan tool edit, ditambah file di folder yang dipantau yang waktu modifikasinya lebih baru dari prompt. Dengan begitu, file yang ditulis lewat Bash atau `php artisan make:*` tetap ikut diperiksa. Hanya file sumber yang dihitung (ekstensi di `quality.source_extensions`, misalnya `php`, `js`, `ts`, `vue`, `svelte`, `css`, dan `json`), sehingga data runtime seperti database SQLite yang dipakai untuk session dan cache tidak memicu review. Agar tidak berputar tanpa akhir, Stop gate menahan paling banyak 3 kali per giliran. Setelah itu giliran dilepas dengan peringatan yang terlihat oleh user.
+Stop gate memeriksa file yang berubah sejak prompt terakhir: file yang diedit dengan tool edit, ditambah file di folder yang dipantau yang waktu modifikasinya lebih baru dari prompt. Dengan begitu, file yang ditulis lewat Bash atau `php artisan make:*` tetap ikut diperiksa. Hanya file sumber yang dihitung (ekstensi di `quality.source_extensions`, misalnya `php`, `js`, `ts`, `vue`, `svelte`, `css`, dan `json`), sehingga data runtime seperti database SQLite yang dipakai untuk session dan cache tidak memicu review. Jika proyek memakai git, file yang isinya sama dengan commit terakhir sebelum giliran dimulai juga tidak dihitung, sehingga perubahan yang sudah dikembalikan tidak memicu review. Perbandingannya dengan commit itu, bukan dengan HEAD, jadi commit di tengah giliran tidak menyembunyikan pekerjaan. Agar tidak berputar tanpa akhir, Stop gate menahan paling banyak 3 kali per giliran. Setelah itu giliran dilepas dengan peringatan yang terlihat oleh user.
 
 ### Konfigurasi gate
 
@@ -570,7 +570,20 @@ Test ini ikut berjalan di `php artisan test`, di Stop gate, dan di CI proyek. Sa
 
 ### Lapis 3: reviewer
 
-`boost-reviewer` adalah subagent yang hanya bisa membaca. Ia membaca index rules, semua rule yang cocok dengan file yang berubah, guideline standar produksi, dan checklist produksi. Lalu ia melaporkan pelanggaran beserta file, baris, dan rule-nya, menjawab sembilan pertanyaan checklist, dan menutup laporannya dengan `VERDICT: PASS` atau `VERDICT: FAIL`. Stop gate membaca baris terakhir itu. Jika agent mengubah file lagi setelah review, review harus diulang.
+`boost-reviewer` adalah subagent yang hanya bisa membaca. Ia menentukan perubahan nyata lewat `git diff`, membaca index rules, rule yang cocok dengan file dalam lingkup, guideline standar produksi, dan checklist produksi, lalu membaca ulang kodenya dari disk. Ia tidak mempercayai klaim di prompt, dan hanya `docs/decisions.md` yang dianggap sumber keputusan.
+
+Ia menilai perubahan, bukan seluruh file. Temuannya dibagi empat tingkat:
+
+| Tingkat | Isi | Memblokir |
+| --- | --- | --- |
+| BLOKIR | Pelanggaran rule di baris yang berubah, cacat nyata, test yang hilang, file baru di atas 400 baris, atau penyimpangan tanpa keputusan yang sah | Ya |
+| CATATAN WARISAN | Pelanggaran di baris yang tidak berubah | Tidak |
+| KEPUTUSAN USER | Penyimpangan beralasan teknis yang menunggu persetujuan pemilik | Tidak |
+| SARAN | Gaya, redaksi, atau konsistensi dokumen | Tidak |
+
+Laporan ditutup dengan `VERDICT: PASS` (tidak ada BLOKIR) atau `VERDICT: FAIL`. Stop gate membaca kemunculan `VERDICT` yang terakhir. Jika agent mengubah file lagi setelah review, review harus diulang. Pada review ulang, reviewer memverifikasi temuan sebelumnya dan tidak memperluas jenis temuan. Tanpa git, seluruh isi file yang disebut dianggap masuk lingkup.
+
+Rancangan ini lahir dari satu temuan nyata. Reviewer versi awal menilai seluruh file yang disentuh dan memberi `FAIL` karena pelanggaran lama. Karena Stop gate mewajibkan `PASS`, agent akhirnya memperbaiki kode lama dan menulis entri keputusan atas nama pemilik, jauh di luar yang diminta.
 
 ### Hasil pengujian gate
 
@@ -598,7 +611,8 @@ Satu temuan dari sesi nyata: saat Read dan Edit dikirim dalam satu pesan, Claude
 ### Batasan yang perlu kamu tahu
 
 - **Dibaca belum tentu dipatuhi.** Gate hanya menjamin rules dibaca. Arch test dan reviewer yang menjaga isinya.
-- **Deteksi tulis lewat Bash adalah heuristik.** Gate mengenali redirect (`>` dan `>>`, tetapi bukan operator `=>` atau `->`), `tee`, `sed -i`, `perl -i`, `cp`, dan `mv`. Cara lain, misalnya `php -r "file_put_contents(...)"`, lolos dari gate edit. Namun Stop gate tetap memeriksa file tersebut lewat waktu modifikasinya.
+- **Deteksi tulis lewat Bash adalah heuristik.** Gate mengenali redirect (`>` dan `>>`, tetapi bukan operator `=>` atau `->`), `tee`, `sed -i`, `perl -i`, `cp`, dan `mv`. Cara lain, misalnya skrip `python3`, `php -r "file_put_contents(...)"`, dan `php artisan make:*`, lolos dari gate edit. Stop gate dan reviewer tetap memeriksa hasilnya. Pada uji pembuatan fitur, ini tidak merugikan karena agent sudah membaca rules di awal sesi.
+- **Pint di Stop gate bisa merapikan baris lama.** Gate menjalankan Pint pada file PHP yang disentuh. Jika file itu belum rapi menurut Pint, baris lama ikut berubah (misalnya urutan trait) dan tersisa di `git diff` walaupun perubahan agent sudah dikembalikan. Matikan lewat `quality.format` jika tidak diinginkan.
 - **Biaya per giliran.** Stop gate menjalankan seluruh test setiap kali ada perubahan PHP, dan reviewer berjalan setiap ada perubahan kode aplikasi. Untuk suite yang lambat, ubah perintah `tests` (misalnya dengan `--parallel`). Untuk proyek kecil, review bisa dimatikan.
 - **Penolakan butuh sekitar 2 detik** karena percobaan ulang tadi. Edit yang diizinkan tidak terpengaruh.
 - **Penanda ringkasan percakapan belum terverifikasi di sesi nyata.** Gate mengenali penanda `compact_boundary` dan `isCompactSummary`. Jika penandanya ternyata berbeda, gate tetap menghitung bacaan sebelum ringkasan. Akibatnya gate jadi lebih longgar, bukan salah menolak.
@@ -623,6 +637,9 @@ Satu temuan dari sesi nyata: saat Read dan Edit dikirim dalam satu pesan, Claude
 | Editan di `AGENTS.md` hilang setelah update | Editan berada di dalam tag `<laravel-boost-guidelines>` | Pindahkan ke `.ai/guidelines/` atau ke luar tag |
 | Agent tidak mematuhi rule baru | File rule dibuat manual sehingga index belum diperbarui, atau glob tidak cocok dengan path | Jalankan `php artisan boost:index-rules` dan periksa `paths:` |
 | `composer update` di server gagal di `boost:update` | Command Boost tidak terdaftar di luar local | Di server gunakan `composer install --no-dev` |
+| `boost:update` berkata "Please set up Boost with [php artisan boost:install] first" setelah `boost:install` non-interaktif | `boost:install --no-interaction` tidak menyimpan `agents` di `boost.json`, dan `boost:update` menolak berjalan tanpa itu | Tambahkan `"agents": ["claude_code"]` ke `boost.json`, atau jalankan installer boosts-guidelines yang mengisinya otomatis |
+| Reviewer memblokir karena kode lama | Reviewer versi lama menilai seluruh file | Perbarui `boost-reviewer.md` dan `boost-quality.php` ke versi 1.1.0 atau lebih baru |
+| Setelah perubahan uji dikembalikan, masih ada satu baris berbeda di file itu | Pint di Stop gate merapikan baris lama | Kembalikan dengan `git checkout -- <file>`, atau pilih file yang lolos `vendor/bin/pint --test` |
 | Boost aktif di staging | `APP_DEBUG=true` di staging | Set `BOOST_ENABLED=false` |
 | `search-docs` memberi contoh API lama | Versi paket belum dicakup Documentation API | Andalkan skill yang terpasang. Lihat [Kebiasaan yang disarankan](#kebiasaan-yang-disarankan) |
 
@@ -763,6 +780,27 @@ Perilaku berikut terbukti saat pengujian dan tidak tertulis di dokumentasi resmi
 | Scoped guidelines | `AGENTS.md` menyusut sekitar 14%, dan file baru muncul di `.ai/rules/boost/` |
 | `boost:update` tanpa `node_modules` | Skill dari paket npm hilang |
 | Command Boost di luar local | Tidak terdaftar ("There are no commands defined in the boost namespace") |
+| `boost:install --guidelines --skills --mcp --no-interaction` | Hanya Claude Code yang dikonfigurasi di mesin uji, tetapi `agents` tidak disimpan di `boost.json`, sehingga `boost:update` gagal |
+| `boost:update` sebelum `npm install` | Skill dari paket npm tidak terpasang, bahkan hilang jika sudah ada |
+
+### Hasil uji adopsi dan pembuatan fitur oleh agent
+
+Uji dilakukan di proyek Laravel 12.72 yang belum memakai Boost, dengan paket spatie permission dan activitylog, Yajra DataTables, Blade dan Tailwind, tanpa Pest, PHPStan, dan halaman login. Setiap fase adalah sesi Claude Code baru (headless, Sonnet 5.5) yang dijalankan dari folder proyek, dengan prompt yang ditulis seperti user biasa. Angka di bawah adalah satu kali jalan per fase.
+
+| Fase | Versi standar | Turn | Durasi | Hasil |
+| --- | --- | --- | --- | --- |
+| Adopsi mengikuti `ADOPTION.md` | 1.0.1 | 25 | sekitar 2,6 menit | Selesai sampai langkah 8. Berhenti meminta persetujuan dependensi, lalu melanjutkan setelah dibalas |
+| Validasi gate | 1.0.1 | 32 | sekitar 3 menit | Gate bekerja, tetapi reviewer menilai seluruh file lama. Agent akhirnya mengubah kode lama dan menulis entri keputusan baru |
+| Pembuatan fitur CRUD | 1.0.1 | 65 | sekitar 11,6 menit | 35 test lolos, tanpa dependensi baru. Reviewer dipanggil 6 kali, sekitar 66% durasi sesi |
+| Validasi gate diulang | 1.1.0 | 21 | sekitar 1,7 menit | Reviewer hanya memblokir penanda uji di baris yang berubah, dua pelanggaran lama dilaporkan tanpa diperbaiki, `docs/decisions.md` tidak berubah |
+| Pengembalian perubahan uji | 1.1.0 | 3 | sekitar 14 detik | Tidak ada perubahan tersisa di kode aplikasi dan Stop gate tidak menahan giliran |
+
+Pelajaran yang paling berguna:
+
+- Membaca rules di awal sesi sepadan. Pada pembuatan fitur, agent membaca 16 rule, memuat 2 skill, dan memanggil `search-docs` sebelum menulis satu baris pun, sehingga gate tidak perlu menolak.
+- Review berulang tidak sepadan jika reviewer menilai seluruh file. Itu sebabnya reviewer versi 1.1.0 hanya menilai perubahan.
+- Agent mengikuti aturan persetujuan dependensi dan keputusan dengan baik. Ia berhenti, bertanya, dan melaporkan hal yang belum beres secara jujur, termasuk bahwa halaman login belum ada.
+- Penanda sementara seperti "uji gate" sebagai isi perubahan uji ditolak reviewer, karena komentar harus menjelaskan alasan. Gunakan perubahan komentar yang bermakna.
 
 ### Paket pendamping: laravel/pao
 

@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.1.0 (2026-11-11)
+
+Perbaikan dari uji adopsi dan pembuatan fitur oleh agent di proyek Laravel 12 yang belum memakai Boost (tiga sesi Claude Code nyata, dinilai oleh penilai independen).
+
+Yang berubah:
+
+- **Reviewer menilai perubahan, bukan seluruh file.** `FAIL` hanya untuk baris yang berubah dan file baru. Pelanggaran lama dilaporkan sebagai catatan warisan yang tidak memblokir. Sebelumnya, satu komentar di file lama memicu `FAIL` karena pelanggaran lama, dan agent terdorong memperbaiki kode lama serta menulis entri keputusan atas nama pemilik.
+- Reviewer membaca ulang kode di setiap review, mengabaikan klaim di prompt, memakai `docs/decisions.md` sebagai satu-satunya sumber keputusan, menjalankan `wc -l` untuk batas 400 baris, dan tidak memblokir karena saran atau konsistensi dokumen pada review ulang.
+- **Stop gate mendeteksi perubahan lewat git** bila tersedia: file yang isinya sama dengan commit sebelum giliran dimulai tidak dihitung, dan commit di tengah giliran tidak menyembunyikan pekerjaan. Tanpa git tetap memakai waktu modifikasi.
+- Vonis diambil dari `VERDICT:` terakhir di laporan reviewer. Pesan penahanan melarang mengubah kode di luar permintaan dan menyertakan klaim di prompt reviewer.
+- Aturan baru di `production-standards.md`: agent tidak boleh menerima risiko atau menyimpang dari rule atas nama pemilik (status `diusulkan`), dan tidak mengubah kode lama di luar permintaan. Template `docs/decisions.md` mendukung status `diusulkan`.
+- **Installer** mengisi `agents: ["claude_code"]` di `boost.json` bila kosong. `boost:install --no-interaction` tidak menyimpannya, sehingga `boost:update` dan `composer update` gagal. Skill Tailwind kini wajib juga untuk `resources/views/**`.
+- `ADOPTION.md`: jalur `boost:install` non-interaktif beserta jebakannya, dan langkah 9 dibagi menjadi Tahap A (perubahan uji dibiarkan) dan Tahap B (dikembalikan di pesan berikutnya).
+
+Hasil uji ulang: validasi gate turun dari 32 menjadi 21 turn, reviewer memblokir hanya penanda uji di baris yang berubah, dua pelanggaran lama dilaporkan tanpa diperbaiki, `docs/decisions.md` tidak berubah, dan pengembalian perubahan uji lolos tanpa review baru.
+
+Memperbarui proyek yang sudah adopsi: salin `template/.claude/hooks/*.php`, `template/.claude/agents/boost-reviewer.md`, dan `template/.ai/guidelines/production-standards.md` ke proyek itu, lalu jalankan `php artisan boost:update`. Jika proyek tidak punya perubahan lokal pada rules, `install.php --force` juga bisa dipakai. Peta skill Tailwind untuk view ada di `boost-gate.json`: tambahkan `resources/views/**` ke skill `tailwindcss-development` secara manual jika file itu sudah disesuaikan.
+
+Batasan yang diketahui dan tidak diubah: tulis file lewat skrip Bash (`python3`, `php -r`) dan `artisan make:*` tidak terdeteksi gate edit, tetapi Stop gate dan reviewer tetap menangkap hasilnya. Pint di Stop gate bisa merapikan baris lama di file yang disentuh.
+
 ## 1.0.1 (2026-11-11)
 
 Perbaikan dua false positive di gate yang ditemukan saat dipakai di sesi nyata:

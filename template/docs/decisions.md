@@ -4,14 +4,16 @@ Keputusan D-0001 sampai D-0010 berasal dari standar boosts-guidelines dan berlak
 
 Tempat mencatat keputusan, risiko yang sengaja diterima, pengecualian aturan, dan utang teknis. Setiap entri menyebut apa yang diputuskan, alasannya, siapa yang memutuskan, kapan, dan kapan ditinjau ulang. Entri tidak dihapus. Jika keputusan berubah, tambahkan entri baru yang merujuk entri lama, lalu ubah status entri lama menjadi "digantikan".
 
+Agent hanya boleh menulis entri berstatus `diusulkan` dengan "Diputuskan oleh: menunggu pemilik". Status `berlaku` ditulis setelah user menyetujuinya di percakapan. Reviewer tidak menganggap entri `diusulkan` sebagai izin menyimpang dari rule.
+
 Format entri:
 
 ```markdown
 ## D-NNNN: Judul singkat
 
 - Tanggal: YYYY-MM-DD
-- Status: berlaku | digantikan oleh D-NNNN
-- Diputuskan oleh: ...
+- Status: diusulkan | berlaku | digantikan oleh D-NNNN
+- Diputuskan oleh: nama pemilik atau user, atau "menunggu pemilik" untuk entri diusulkan
 - Keputusan: ...
 - Alasan: ...
 - Dampak untuk proyek ini: diisi saat adopsi.

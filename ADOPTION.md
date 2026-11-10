@@ -32,13 +32,25 @@ composer require laravel/boost --dev
 
 ## Langkah 3: jalankan boost:install
 
-Lewati jika `boost.json` sudah ada dan `.claude/skills/` sudah berisi skill. Jika belum:
+Lewati jika `boost.json` sudah ada dan `.claude/skills/` sudah berisi skill. Jika belum, ada dua cara.
+
+**Di terminal user (interaktif):**
 
 ```bash
 php artisan boost:install
 ```
 
 Pilihan yang benar: agent Claude Code, fitur guidelines, skills, dan MCP. Integrasi lain (Cloud, Sail, Nightwatch) sesuai kebutuhan proyek.
+
+**Tanpa terminal (non-interaktif), misalnya agent yang menjalankannya sendiri:**
+
+```bash
+php artisan boost:install --guidelines --skills --mcp --no-interaction
+```
+
+Boost memilih agent dari yang terdeteksi di mesin. Pada pengujian hanya Claude Code yang dikonfigurasi, tetapi periksa hasilnya. Jika muncul folder atau file agent lain (`.cursor`, `.codex`, `.github/skills`, `.agents`, dan sejenisnya), tanyakan kepada user apakah agent itu memang dipakai.
+
+Mode ini **tidak menyimpan `agents` di `boost.json`**, sehingga `boost:update` gagal dengan pesan "Please set up Boost with [php artisan boost:install] first". `composer update` juga ikut gagal karena `boost:update` ada di `post-update-cmd`. Installer di langkah 4 memperbaikinya otomatis. Jika installer tidak dijalankan, tambahkan `"agents": ["claude_code"]` ke `boost.json` secara manual.
 
 Periksa: `boost.json` ada, `.mcp.json` berisi server `laravel-boost`, dan `.claude/skills/` berisi minimal `laravel-best-practices`.
 
@@ -65,6 +77,7 @@ Baca bagian "Perlu perhatian" di laporan installer dan tangani setiap barisnya:
 | Pest tidak terpasang | Arch test tidak dipasang. Tawarkan ke user untuk memasang Pest, atau lanjut tanpa arch test dan catat di `docs/decisions.md` |
 | PHPStan tidak terpasang | Static analysis di Stop gate mati. Tawarkan `larastan/larastan`, lalu isi `quality.static` di `boost-gate.json` |
 | Tidak ada script pemeriksaan tipe frontend | Isi `quality.frontend` jika proyek punya perintah lint atau tipe, atau biarkan kosong |
+| `boost.json` (agents diisi claude_code) | Normal setelah `boost:install` non-interaktif. Pastikan memang hanya Claude Code yang dipakai tim, lalu lanjut |
 | Tidak ada skill di `.claude/skills` | Kembali ke langkah 3, lalu jalankan installer lagi dengan `--force` |
 | File "Dibiarkan karena isinya berbeda" | Proyek sudah punya versi sendiri. Bandingkan dengan `boosts-guidelines/template/<path>`, gabungkan secara manual, dan jangan memakai `--force` tanpa persetujuan user |
 
@@ -114,14 +127,27 @@ Pastikan `.claude/settings.json` tidak masuk `.gitignore`. File `.claude/setting
 
 Minta user membuka sesi Claude Code baru di `PROYEK`, lalu jalankan pemeriksaan berikut di sesi itu. Catat hasil setiap pemeriksaan.
 
+Pemeriksaan dibagi dua tahap karena Stop gate hanya bekerja jika perubahan masih ada saat giliran selesai. Jika perubahan uji dikembalikan di giliran yang sama, isi file sudah kembali seperti semula dan gate tidak punya apa pun untuk diperiksa.
+
+**Tahap A: satu giliran, perubahan uji tetap dibiarkan.**
+
 | # | Pemeriksaan | Hasil yang diharapkan |
 | --- | --- | --- |
-| 1 | Tanyakan kepada agent: "Apa aturan Boost gate di proyek ini?" | Agent menyebut empat syarat gate. Ini membuktikan hook SessionStart berjalan |
-| 2 | Minta agent mengubah satu baris komentar di model mana pun tanpa persiapan | Edit pertama ditolak dengan daftar rule, skill, dan `search-docs` |
+| 1 | Tanyakan kepada agent: "Apa aturan Boost gate di proyek ini?" | Agent menyebut syarat gate. Ini membuktikan hook SessionStart berjalan |
+| 2 | Minta agent menjelaskan lebih jelas satu baris komentar di model yang lolos `vendor/bin/pint --test <file>`, tanpa persiapan | Edit pertama ditolak dengan daftar rule, skill, dan `search-docs` |
 | 3 | Biarkan agent memenuhi syaratnya lalu mengulang edit | Edit diizinkan |
-| 4 | Biarkan agent menyelesaikan giliran | Stop gate menjalankan Pint, PHPStan, dan test, lalu meminta review dari `boost-reviewer` |
+| 4 | Biarkan agent menyelesaikan giliran **dengan perubahan uji masih ada** | Stop gate menjalankan Pint dan test, lalu meminta review dari `boost-reviewer` |
 | 5 | Biarkan agent memanggil `boost-reviewer` | Subagent tersedia dan menutup laporan dengan `VERDICT: PASS` atau `FAIL` |
-| 6 | Kembalikan perubahan uji coba | Tidak ada perubahan tersisa di kode aplikasi |
+
+Reviewer menilai perubahan, bukan seluruh file. Jika file model itu punya pelanggaran lama, reviewer boleh melaporkannya sebagai CATATAN WARISAN, dan itu tidak memblokir. Pemeriksaan 5 dianggap gagal jika agent akhirnya memperbaiki kode lama di luar komentar uji atau menulis entri baru di `docs/decisions.md` hanya demi lolos review. Agent cukup menyebutkannya kepada user.
+
+Jangan memakai penanda sementara seperti "uji gate" sebagai isi perubahan uji. Reviewer menilai komentar baru dengan standar yang sama (komentar menjelaskan alasan), sehingga penanda itu ditolak dan agent terpaksa mengembalikannya di giliran yang sama. Itu menggagalkan pemisahan dua tahap ini. Pilih juga file yang lolos `vendor/bin/pint --test <file>`, karena Stop gate menjalankan Pint pada file yang disentuh dan merapikan baris lama di file yang belum rapi.
+
+**Tahap B: pesan berikutnya.**
+
+| # | Pemeriksaan | Hasil yang diharapkan |
+| --- | --- | --- |
+| 6 | Minta agent mengembalikan perubahan uji | `git status` tidak menunjukkan perubahan di kode aplikasi, dan Stop gate lolos tanpa review baru karena isi file sudah sama dengan sebelum giliran. Jika Pint sempat merapikan baris lama di file itu, kembalikan juga dengan `git checkout -- <file>` |
 | 7 | Opsional: jalankan `/compact`, lalu minta edit lagi | Edit ditolak lagi karena rules harus dibaca ulang. Jika diizinkan, catat bahwa penanda ringkasan versi Claude Code ini berbeda |
 
 Jika pemeriksaan 5 gagal karena subagent tidak dikenal, pastikan file `.claude/agents/boost-reviewer.md` ada dan sesinya dibuka setelah file itu dibuat.
@@ -145,4 +171,5 @@ Setiap penyesuaian yang melonggarkan gate dicatat di `docs/decisions.md`. Untuk 
 1. Jalankan installer dengan `--dry-run`.
 2. File yang dilaporkan "Dibiarkan" sudah berbeda dari versi boosts-guidelines. Bandingkan dengan `diff PROYEK/<path> /Users/Bananay/Claude/boosts-guidelines/template/<path>`. Perbedaan bisa berasal dari rule tambahan yang direkam lewat `record-rule` di proyek itu, jadi jangan menimpanya begitu saja.
 3. Gabungkan perubahan dari boosts-guidelines secara manual, atau pakai `--force` hanya untuk file yang tidak punya perubahan lokal. `docs/decisions.md` tidak pernah ditimpa.
+4. Untuk pembaruan yang hanya menyentuh gate, salin file ini dari `template/` ke proyek: `.claude/hooks/*.php`, `.claude/agents/boost-reviewer.md`, dan `.ai/guidelines/production-standards.md`. Lalu jalankan `php artisan boost:update` agar guideline tersalin ke `AGENTS.md`. Daftar file yang berubah per versi ada di `CHANGELOG.md`.
 4. Jalankan `php artisan boost:index-rules` dan ulangi langkah 5.

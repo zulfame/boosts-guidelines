@@ -73,7 +73,7 @@ file_put_contents($counterFile, json_encode($counter));
 
 boostEmit([
     'decision' => 'block',
-    'reason' => "Boost gate: pekerjaan belum boleh dianggap selesai.\n\n".implode("\n\n", $problems)."\n\nPerbaiki, lalu selesaikan giliran lagi. (Percobaan ".$counter['blocks'].' dari '.$maxBlocks.')',
+    'reason' => "Boost gate: pekerjaan belum boleh dianggap selesai.\n\n".implode("\n\n", $problems)."\n\nPerbaiki, lalu selesaikan giliran lagi. Jangan mengubah kode di luar permintaan hanya demi lolos gate, dan jangan menulis keputusan atas nama pemilik. Sebutkan hal seperti itu ke user di laporan akhir. (Percobaan ".$counter['blocks'].' dari '.$maxBlocks.')',
 ]);
 
 /**
@@ -150,7 +150,54 @@ function boostChangedFiles(array $turnEvents, string $turnStartedAt, string $roo
 
     sort($files);
 
-    return array_values($files);
+    return boostDropUnchangedFiles(array_values($files), $root, $turnStartedAt);
+}
+
+/**
+ * With git, drop files whose content equals the last commit made before this
+ * turn started (for example a file the agent changed and then restored). New
+ * files stay. Comparing with that commit, not with HEAD, means committing
+ * during the turn does not hide the work. Without git, or without a commit
+ * before the turn, every file stays.
+ *
+ * @param  list<string>  $files
+ * @return list<string>
+ */
+function boostDropUnchangedFiles(array $files, string $root, string $turnStartedAt): array
+{
+    $base = boostBaseCommit($root, $turnStartedAt);
+
+    if ($files === [] || $base === null) {
+        return $files;
+    }
+
+    $dir = escapeshellarg($root);
+
+    return array_values(array_filter($files, function (string $file) use ($dir, $base): bool {
+        $output = [];
+        exec("cd {$dir} && git cat-file -e ".escapeshellarg($base.':'.$file).' 2>/dev/null', $output, $existsAtBase);
+
+        if ($existsAtBase !== 0) {
+            return true;
+        }
+
+        exec("cd {$dir} && git diff --quiet {$base} -- ".escapeshellarg($file).' 2>/dev/null', $output, $differs);
+
+        return $differs !== 0;
+    }));
+}
+
+function boostBaseCommit(string $root, string $turnStartedAt): ?string
+{
+    if ($turnStartedAt === '') {
+        return null;
+    }
+
+    $output = [];
+    exec('cd '.escapeshellarg($root).' && git rev-list -1 --before='.escapeshellarg($turnStartedAt).' HEAD 2>/dev/null', $output, $code);
+    $sha = trim($output[0] ?? '');
+
+    return $code === 0 && preg_match('/^[0-9a-f]{40}$/', $sha) === 1 ? $sha : null;
 }
 
 /**
@@ -225,17 +272,36 @@ function boostReviewProblem(array $turnEvents, array $changed, array $review): ?
         }
     }
 
-    $instruction = 'Jalankan subagent `'.$agent.'` dengan tool Agent (subagent_type: '.$agent.') dan berikan daftar file ini: '.implode(', ', $reviewable).'.';
+    $instruction = 'Jalankan subagent `'.$agent.'` dengan tool Agent (subagent_type: '.$agent.') dan berikan daftar file ini: '.implode(', ', $reviewable).'. Sebutkan juga file yang berubah sejak review sebelumnya, jika ada. Jangan menyertakan kesimpulan, klaim, atau daftar "trade-off yang sudah diterima" di prompt: reviewer memeriksa sendiri dari kode.';
 
     if ($lastReview === null || $lastReview['index'] < $lastEdit) {
         return "Review belum dijalankan setelah perubahan terakhir.\n".$instruction;
     }
 
-    if (! str_contains($lastReview['result'], 'VERDICT: PASS')) {
-        return "Reviewer belum memberi VERDICT: PASS. Perbaiki temuannya, lalu jalankan review lagi.\n".$instruction;
+    $verdict = boostReviewVerdict($lastReview['result']);
+
+    if ($verdict === null) {
+        return "Laporan reviewer tidak ditutup dengan baris VERDICT. Jalankan review lagi.\n".$instruction;
+    }
+
+    if ($verdict !== 'PASS') {
+        return "Reviewer memberi VERDICT: FAIL. Perbaiki hanya temuan BLOKIR yang ada di perubahanmu. Catatan warisan di kode lama tidak diperbaiki, cukup disebutkan ke user di laporan akhir. Lalu jalankan review ulang.\n".$instruction;
     }
 
     return null;
+}
+
+/**
+ * The verdict is the last "VERDICT: PASS|FAIL" in the report, so a report that
+ * quotes an earlier verdict cannot pass by accident.
+ */
+function boostReviewVerdict(string $report): ?string
+{
+    if (preg_match_all('/VERDICT:\s*(PASS|FAIL)/', $report, $matches) === 0) {
+        return null;
+    }
+
+    return end($matches[1]);
 }
 
 function boostLooksLikeWrite(string $command): bool

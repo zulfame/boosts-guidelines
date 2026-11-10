@@ -162,6 +162,18 @@ if ($installedSkills === []) {
     $report['notes'][] = 'Tidak ada skill Boost di .claude/skills. Jalankan php artisan boost:install dengan fitur skills, lalu jalankan installer ini lagi dengan --force agar peta skill terisi.';
 }
 
+// 3b. boost:install without interaction does not store the agents, and boost:update
+// refuses to run without them (it also runs from composer's post-update-cmd).
+$boostJsonPath = $target.'/boost.json';
+$boostJson = json_decode((string) file_get_contents($boostJsonPath), true);
+
+if (! is_array($boostJson)) {
+    $report['notes'][] = 'boost.json bukan JSON yang valid, jadi daftar agent tidak diperiksa. Jalankan ulang php artisan boost:install.';
+} elseif (empty($boostJson['agents'])) {
+    write($boostJsonPath, json_encode(['agents' => ['claude_code']] + $boostJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n", $dryRun);
+    $report['merged'][] = 'boost.json (agents diisi claude_code karena boost:install non-interaktif tidak menyimpannya)';
+}
+
 // 4. Env block.
 $envBlock = (string) file_get_contents($source.'/stubs/env-boost.txt');
 
@@ -300,7 +312,7 @@ function skillEntries(array $installed): array
         'volt-development' => ['resources/views/livewire/**', 'resources/views/pages/**'],
         'fluxui-development' => ['resources/views/**'],
         'folio-routing' => ['resources/views/pages/**'],
-        'tailwindcss-development' => ['resources/css/**'],
+        'tailwindcss-development' => ['resources/css/**', 'resources/views/**'],
         'pennant-development' => ['app/Features/**'],
         'mcp-development' => ['app/Mcp/**'],
     ];

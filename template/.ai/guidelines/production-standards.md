@@ -4,6 +4,8 @@
 - Tidak ada mock, stub, data palsu, atau placeholder diam-diam di kode aplikasi. Bagian yang belum selesai ditandai `TODO: <alasan>` dan disebutkan di laporan akhir.
 - Jangan pernah melewati pengecekan: tanpa `--no-verify`, tanpa menurunkan level atau mematikan aturan lint dan static analysis, tanpa melewati atau menghapus test, tanpa menambah baseline. Perbaiki akar masalahnya.
 - Utang teknis, risiko yang diterima, dan pengecualian aturan dicatat di `docs/decisions.md`, tidak pernah dibiarkan implisit.
+- Agent tidak boleh menerima risiko atau menyimpang dari rule atas nama pemilik. Penyimpangan dicatat dengan status `diusulkan` dan `Diputuskan oleh: menunggu pemilik`, lalu disebut di laporan akhir agar user memutuskan. Entri berstatus `berlaku` baru ditulis setelah user menyetujuinya di percakapan.
+- Jangan mengubah kode lama di luar permintaan demi memenuhi rules atau lolos review. Rules berlaku untuk kode yang ditulis atau diubah. Pelanggaran yang ditemukan di kode lama dilaporkan kepada user di laporan akhir, bukan diperbaiki diam-diam.
 - Laporkan dengan jujur. Test yang tidak dijalankan tidak disebut lolos, dan hal yang hanya dibaca tanpa diuji disebut "belum diverifikasi".
 
 ## Batas default
@@ -30,7 +32,7 @@ Berlaku kecuali proyek menetapkan nilai lain di `docs/decisions.md`:
 
 ## Perbaikan bug
 - Perbaiki akar masalahnya, bukan gejalanya. Tulis test regresi yang gagal lebih dulu, baru perbaiki.
-- Cari defek yang sama di seluruh repositori. Perbaiki yang ada di file yang sudah kamu ubah, dan sebutkan sisanya di laporan.
+- Cari defek yang sama dengan bug yang sedang diperbaiki di seluruh repositori. Perbaiki kemunculannya di file yang sudah kamu ubah, dan sebutkan sisanya di laporan.
 
 ## Library dan dependensi
 - Sebelum memakai API library, pastikan API itu ada di versi yang terpasang (lewat `search-docs` atau source di `vendor/` dan `node_modules/`). Jangan memakai API yang diingat dari versi lain.
