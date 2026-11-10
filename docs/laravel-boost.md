@@ -791,9 +791,10 @@ Uji dilakukan di proyek Laravel 12.72 yang belum memakai Boost, dengan paket spa
 | --- | --- | --- | --- | --- |
 | Adopsi mengikuti `ADOPTION.md` | 1.0.1 | 25 | sekitar 2,6 menit | Selesai sampai langkah 8. Berhenti meminta persetujuan dependensi, lalu melanjutkan setelah dibalas |
 | Validasi gate | 1.0.1 | 32 | sekitar 3 menit | Gate bekerja, tetapi reviewer menilai seluruh file lama. Agent akhirnya mengubah kode lama dan menulis entri keputusan baru |
-| Pembuatan fitur CRUD | 1.0.1 | 65 | sekitar 11,6 menit | 35 test lolos, tanpa dependensi baru. Reviewer dipanggil 6 kali, sekitar 66% durasi sesi |
+| Pembuatan fitur CRUD | 1.0.1 | 65 | sekitar 11,6 menit | 35 test lolos, tanpa dependensi baru. 6 putaran review, dan siklus review serta perbaikannya memakai sekitar 66% durasi sesi |
 | Validasi gate diulang | 1.1.0 | 21 | sekitar 1,7 menit | Reviewer hanya memblokir penanda uji di baris yang berubah, dua pelanggaran lama dilaporkan tanpa diperbaiki, `docs/decisions.md` tidak berubah |
 | Pengembalian perubahan uji | 1.1.0 | 3 | sekitar 14 detik | Tidak ada perubahan tersisa di kode aplikasi dan Stop gate tidak menahan giliran |
+| Pembuatan fitur CRUD diulang | 1.1.0 | 86 | sekitar 7,4 menit | 32 test lolos, tanpa dependensi baru. 4 putaran review (satu terbuang), siklus review dan perbaikan sekitar 47% durasi sesi. Kode lama yang berubah hanya `routes/web.php` dan `DatabaseSeeder.php`, serta dua entri keputusan berstatus `diusulkan` |
 
 Pelajaran yang paling berguna:
 
@@ -801,6 +802,9 @@ Pelajaran yang paling berguna:
 - Review berulang tidak sepadan jika reviewer menilai seluruh file. Itu sebabnya reviewer versi 1.1.0 hanya menilai perubahan.
 - Agent mengikuti aturan persetujuan dependensi dan keputusan dengan baik. Ia berhenti, bertanya, dan melaporkan hal yang belum beres secara jujur, termasuk bahwa halaman login belum ada.
 - Penanda sementara seperti "uji gate" sebagai isi perubahan uji ditolak reviewer, karena komentar harus menjelaskan alasan. Gunakan perubahan komentar yang bermakna.
+- Pada pembuatan fitur yang sama, reviewer versi 1.1.0 memangkas durasi sesi sekitar 36% dan siklus review sekitar 54%, tanpa menurunkan test atau menambah dependensi. Perbandingan itu satu kali jalan per versi, jadi sebagian selisih bisa berupa variasi antar-jalan.
+- Reviewer yang menilai lebih sempit punya harga: celah desain yang tidak melanggar rule tertulis lebih mudah lolos. Contohnya izin fitur yang dibuat lewat seeder, yang tidak dijalankan saat deploy production. Rules dan checklist yang mencantumkan kebutuhan production secara eksplisit menjadi lebih penting, dan agent perlu terus melaporkan hal seperti ini ke user.
+- Agent kadang menjalankan reviewer di latar belakang, sehingga laporannya tidak terbaca dan satu putaran terbuang.
 
 ### Paket pendamping: laravel/pao
 

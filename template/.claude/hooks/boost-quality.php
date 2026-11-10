@@ -272,7 +272,7 @@ function boostReviewProblem(array $turnEvents, array $changed, array $review): ?
         }
     }
 
-    $instruction = 'Jalankan subagent `'.$agent.'` dengan tool Agent (subagent_type: '.$agent.') dan berikan daftar file ini: '.implode(', ', $reviewable).'. Sebutkan juga file yang berubah sejak review sebelumnya, jika ada. Jangan menyertakan kesimpulan, klaim, atau daftar "trade-off yang sudah diterima" di prompt: reviewer memeriksa sendiri dari kode.';
+    $instruction = 'Jalankan subagent `'.$agent.'` dengan tool Agent (subagent_type: '.$agent.'), di latar depan tanpa run_in_background, dan berikan daftar file ini: '.implode(', ', $reviewable).'. Sebutkan juga file yang berubah sejak review sebelumnya, jika ada. Jangan menyertakan kesimpulan, klaim, atau daftar "trade-off yang sudah diterima" di prompt: reviewer memeriksa sendiri dari kode.';
 
     if ($lastReview === null || $lastReview['index'] < $lastEdit) {
         return "Review belum dijalankan setelah perubahan terakhir.\n".$instruction;
@@ -281,7 +281,7 @@ function boostReviewProblem(array $turnEvents, array $changed, array $review): ?
     $verdict = boostReviewVerdict($lastReview['result']);
 
     if ($verdict === null) {
-        return "Laporan reviewer tidak ditutup dengan baris VERDICT. Jalankan review lagi.\n".$instruction;
+        return "Laporan reviewer tidak ditutup dengan baris VERDICT. Jika hasilnya hanya pesan bahwa agent berjalan di latar belakang, jalankan review lagi di latar depan.\n".$instruction;
     }
 
     if ($verdict !== 'PASS') {

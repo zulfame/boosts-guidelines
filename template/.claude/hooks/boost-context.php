@@ -22,7 +22,7 @@ $lines[] = 'Hook Claude Code menegakkan aturan Boost. Perubahan file ditolak sam
 $lines[] = '1. Setiap file di `.ai/rules` yang glob-nya cocok dengan path target sudah dibaca dengan tool Read.';
 $lines[] = '2. Skill yang dipetakan ke path target sudah dimuat dengan tool Skill.';
 $lines[] = '3. Untuk kode aplikasi, tool `search-docs` sudah dipanggil minimal sekali.';
-$lines[] = '4. Sebelum giliran selesai: format, static analysis, dan test harus lolos, dan subagent `'.($config['review']['agent'] ?? 'boost-reviewer').'` harus memberi VERDICT: PASS untuk perubahan kode aplikasi.';
+$lines[] = '4. Sebelum giliran selesai: format, static analysis, dan test harus lolos, dan subagent `'.($config['review']['agent'] ?? 'boost-reviewer').'` harus memberi VERDICT: PASS untuk perubahan kode aplikasi. Jalankan reviewer di latar depan, tanpa run_in_background, supaya laporannya terbaca.';
 $lines[] = '5. Rules berlaku untuk kode yang kamu tulis atau ubah. Jangan mengubah kode lama di luar permintaan demi lolos gate atau review, dan jangan menulis keputusan atas nama pemilik. Laporkan hal seperti itu ke user di laporan akhir.';
 
 if ($source === 'compact') {

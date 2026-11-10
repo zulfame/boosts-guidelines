@@ -64,6 +64,12 @@
             "skills": [
                 "tailwindcss-development"
             ]
+        },
+        {
+            "glob": "resources/views/**",
+            "skills": [
+                "tailwindcss-development"
+            ]
         }
     ],
     "search_docs": {

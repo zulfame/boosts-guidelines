@@ -20,7 +20,7 @@ Laravel Boost memberi agent guidelines, skill, tool MCP, dan project rules. Semu
 
 Repositori ini menambahkan dua hal di atas Boost:
 
-1. **Standar kode produksi** yang berlaku umum: 2 guideline dan 79 rules di 28 file, dalam bahasa Indonesia.
+1. **Standar kode produksi** yang berlaku umum: 2 guideline dan 80 rules di 28 file, dalam bahasa Indonesia.
 2. **Gate penegak** yang memaksa agent membaca rules, memuat skill, dan memanggil `search-docs` sebelum mengedit, serta memastikan format, static analysis, test, dan review lolos sebelum giliran selesai.
 
 ## Isi repositori
@@ -57,14 +57,14 @@ composer require laravel/boost --dev
 php artisan boost:install
 ```
 
-Pilih Claude Code, lalu aktifkan guidelines, skills, dan MCP. Setelah itu pasang standar ini:
+Pilih Claude Code, lalu aktifkan guidelines, skills, dan MCP. Setelah itu pasang standar ini. Sesuaikan `/path/ke/boosts-guidelines` dengan lokasi folder ini di mesinmu (hasil `git clone` repositori ini), dan `/path/ke/proyek` dengan root proyek tujuan:
 
 ```bash
-php /Users/Bananay/Claude/boosts-guidelines/scripts/install.php /path/ke/proyek --dry-run
+php /path/ke/boosts-guidelines/scripts/install.php /path/ke/proyek --dry-run
 ```
 
 ```bash
-php /Users/Bananay/Claude/boosts-guidelines/scripts/install.php /path/ke/proyek
+php /path/ke/boosts-guidelines/scripts/install.php /path/ke/proyek
 ```
 
 Lanjutkan dengan langkah verifikasi di [ADOPTION.md](ADOPTION.md), lalu buka sesi Claude Code baru di proyek itu. Hook dan subagent hanya dimuat saat sesi dimulai.
@@ -115,7 +115,7 @@ Installer juga menyesuaikan pemeriksaan dengan alat yang ada di proyek. Static a
 
 ## Status verifikasi
 
-Diuji di Laravel 13.40 dan 12.72, Laravel Boost 2.10.4, Pest 5.3, Larastan 3.14, PHP 8.5, Claude Code 2.1, dengan agent berbasis Sonnet 5.5.
+Diuji di macOS dengan Laravel 13.40 dan 12.72, Laravel Boost 2.10.4, Pest 5.3, Larastan 3.14, PHP 8.5, Claude Code 2.1, dan agent berbasis Sonnet 5.5.
 
 Sudah terbukti, termasuk di sesi Claude Code nyata (headless) pada proyek Laravel 12 yang belum memakai Boost:
 
@@ -124,14 +124,18 @@ Sudah terbukti, termasuk di sesi Claude Code nyata (headless) pada proyek Larave
 - **Stop gate dan reviewer:** berjalan di alur nyata, termasuk batas penahanan dan penguraian vonis `PASS` dan `FAIL`.
 - **Fitur nyata:** agent membangun CRUD kategori produk memakai paket yang sudah terpasang (spatie permission dan activitylog), tanpa dependensi baru, dengan 35 test lolos.
 - **Perbaikan versi 1.1.0:** pada uji ulang validasi gate, reviewer hanya memblokir perubahan di baris yang berubah dan melaporkan pelanggaran lama sebagai catatan warisan. Agent tidak memperbaiki kode lama, `docs/decisions.md` tidak berubah, dan pengembalian perubahan uji lolos tanpa review baru. Dibanding versi 1.0.1, validasi itu turun dari 32 menjadi 21 turn.
+- **Pembuatan fitur diulang dengan versi 1.1.0** (prompt dan kondisi awal sama): durasi sesi turun dari 11 menit 37 detik menjadi 7 menit 23 detik. Siklus review dan perbaikan turun dari 7 menit 40 detik (66%) menjadi 3 menit 29 detik (47%), dan putaran review dari 6 menjadi 4 (satu putaran terbuang karena reviewer dijalankan di latar belakang). Review hanya memblokir hal yang bisa ditunjuk ke rule: test rate limit yang hilang dan file test di atas 400 baris. Agent tidak mengubah `bootstrap/app.php`, menulis dua entri keputusan berstatus `diusulkan`, dan tidak menyentuh entri standar. Perkiraan pemakaian turun dari USD 2,8 menjadi USD 1,9 (setara tarif API, bukan tagihan).
 - **Installer:** menghasilkan konfigurasi yang sama dengan yang disusun manual, aman dijalankan ulang, menggabungkan `.claude/settings.json` tanpa menghapus isinya, dan memperbaiki `boost.json` yang kehilangan `agents`.
 - **Arch test** menangkap pelanggaran yang disengaja.
 
 Belum terbukti, dan perlu diketahui:
 
 - Reset hitungan gate setelah percakapan diringkas (`/compact`). Gate mengenali penanda `compact_boundary`. Jika penandanya berbeda, gate menjadi lebih longgar, bukan salah menolak.
-- Permintaan fitur besar belum diulang dengan reviewer versi 1.1.0. Pada versi 1.0.1 fitur itu butuh 6 putaran review dan sekitar 66% durasi sesi. Penurunan jumlah putaran masih berupa harapan.
+- Hasil pembuatan fitur adalah satu kali jalan per versi, jadi sebagian selisihnya bisa berupa variasi antar-jalan. Jumlah turn agent bahkan naik (65 menjadi 86), tampaknya karena gaya kerjanya berbeda (lebih banyak edit kecil), jadi ukuran yang dipakai adalah durasi.
+- Reviewer versi 1.1.0 menilai lebih sempit. Pada fitur yang sama, izin dibuat lewat seeder yang tidak dijalankan saat deploy production. Reviewer versi 1.0.1 mengangkatnya sebagai cacat nyata, sedangkan versi 1.1.0 tidak memblokirnya. Agent mengungkapkannya sendiri sebagai pertanyaan terbuka di laporan dan `memory/PRD.md`, tetapi celah seperti ini bisa lolos dari review.
 - Proyek tanpa git hanya diuji dengan simulasi.
+- Linux dan Windows. Hook memakai shell POSIX (`cd`, `&&`) dan `git`, jadi Linux seharusnya berjalan, tetapi Windows tanpa WSL belum didukung.
+- Laravel 11. Boost mendukungnya, tetapi standar ini baru diuji di Laravel 12 dan 13.
 - Setiap skenario nyata dijalankan satu kali dengan satu model, jadi perilaku bisa bervariasi.
 - MySQL, request paralel, dan tampilan di browser.
 

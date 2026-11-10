@@ -13,8 +13,13 @@ Yang berubah:
 - Aturan baru di `production-standards.md`: agent tidak boleh menerima risiko atau menyimpang dari rule atas nama pemilik (status `diusulkan`), dan tidak mengubah kode lama di luar permintaan. Template `docs/decisions.md` mendukung status `diusulkan`.
 - **Installer** mengisi `agents: ["claude_code"]` di `boost.json` bila kosong. `boost:install --no-interaction` tidak menyimpannya, sehingga `boost:update` dan `composer update` gagal. Skill Tailwind kini wajib juga untuk `resources/views/**`.
 - `ADOPTION.md`: jalur `boost:install` non-interaktif beserta jebakannya, dan langkah 9 dibagi menjadi Tahap A (perubahan uji dibiarkan) dan Tahap B (dikembalikan di pesan berikutnya).
+- Instruksi reviewer di Stop gate dan konteks SessionStart menyebut agar reviewer dijalankan di latar depan. Sebelumnya agent kadang menjalankannya di latar belakang, laporannya tidak terbaca, dan satu putaran review terbuang.
+- Rule baru di `factories.md` (kini 80 rules): data yang dibutuhkan fitur agar berjalan di production (izin, role dasar, pengaturan awal) tidak hanya dibuat oleh seeder, karena seeder tidak dijalankan saat deploy. Temuan dari uji pembuatan fitur.
+- Dokumentasi memakai penunjuk `/path/ke/boosts-guidelines` alih-alih path absolut, dan menyebut platform serta versi Laravel yang diuji.
 
-Hasil uji ulang: validasi gate turun dari 32 menjadi 21 turn, reviewer memblokir hanya penanda uji di baris yang berubah, dua pelanggaran lama dilaporkan tanpa diperbaiki, `docs/decisions.md` tidak berubah, dan pengembalian perubahan uji lolos tanpa review baru.
+Hasil uji ulang pembuatan fitur (prompt dan kondisi awal sama): durasi sesi turun dari 11 menit 37 detik menjadi 7 menit 23 detik, siklus review dan perbaikan dari 7 menit 40 detik menjadi 3 menit 29 detik, dan putaran review dari 6 menjadi 4. Agent tidak mengubah `bootstrap/app.php` dan tidak menulis keputusan berstatus `berlaku` atas nama pemilik. Satu kali jalan per versi. Reviewer yang lebih sempit tidak memblokir izin yang dibuat lewat seeder (tidak dijalankan saat deploy), tetapi agent mengungkapkannya sebagai pertanyaan terbuka.
+
+Hasil uji ulang validasi gate: turun dari 32 menjadi 21 turn, reviewer memblokir hanya penanda uji di baris yang berubah, dua pelanggaran lama dilaporkan tanpa diperbaiki, `docs/decisions.md` tidak berubah, dan pengembalian perubahan uji lolos tanpa review baru.
 
 Memperbarui proyek yang sudah adopsi: salin `template/.claude/hooks/*.php`, `template/.claude/agents/boost-reviewer.md`, dan `template/.ai/guidelines/production-standards.md` ke proyek itu, lalu jalankan `php artisan boost:update`. Jika proyek tidak punya perubahan lokal pada rules, `install.php --force` juga bisa dipakai. Peta skill Tailwind untuk view ada di `boost-gate.json`: tambahkan `resources/views/**` ke skill `tailwindcss-development` secara manual jika file itu sudah disesuaikan.
 

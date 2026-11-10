@@ -2,7 +2,7 @@
 
 Langkah ini ditulis untuk diikuti agent secara berurutan. Jangan melompati langkah. Setiap langkah punya cara memeriksa bahwa langkah itu berhasil. Laporkan hasil setiap pemeriksaan kepada user dengan jujur, termasuk yang gagal atau tidak bisa dijalankan.
 
-Sepanjang dokumen ini, `boosts-guidelines` berarti folder `/Users/Bananay/Claude/boosts-guidelines` dan `PROYEK` berarti root proyek Laravel tujuan.
+Sepanjang dokumen ini, `boosts-guidelines` berarti folder repositori ini di mesinmu (hasil `git clone`) dan `PROYEK` berarti root proyek Laravel tujuan. Perintah di bawah memakai `/path/ke/boosts-guidelines` dan `PROYEK` sebagai penunjuk. Ganti dengan path sebenarnya di mesin ini sebelum menjalankannya.
 
 ## Aturan selama adopsi
 
@@ -15,7 +15,7 @@ Sepanjang dokumen ini, `boosts-guidelines` berarti folder `/Users/Bananay/Claude
 
 | Prasyarat | Cara memeriksa |
 | --- | --- |
-| Laravel 11.45 atau lebih baru | `php artisan --version` |
+| Laravel 11.45 atau lebih baru (standar ini baru diuji di Laravel 12 dan 13) | `php artisan --version` |
 | PHP 8.2 atau lebih baru di PATH | `php -v` (hook gate memanggil `php`) |
 | Dependensi PHP terpasang | folder `vendor/` ada |
 | Dependensi JS terpasang | folder `node_modules/` ada, jika proyek punya `package.json` |
@@ -59,13 +59,13 @@ Periksa: `boost.json` ada, `.mcp.json` berisi server `laravel-boost`, dan `.clau
 Lihat dulu apa yang akan berubah:
 
 ```bash
-php /Users/Bananay/Claude/boosts-guidelines/scripts/install.php PROYEK --dry-run
+php /path/ke/boosts-guidelines/scripts/install.php PROYEK --dry-run
 ```
 
 Jika laporannya masuk akal, jalankan:
 
 ```bash
-php /Users/Bananay/Claude/boosts-guidelines/scripts/install.php PROYEK
+php /path/ke/boosts-guidelines/scripts/install.php PROYEK
 ```
 
 Installer menyalin `template/`, menggabungkan hook ke `.claude/settings.json`, membuat `.claude/hooks/boost-gate.json` dari skill yang terpasang, menambahkan blok env Boost ke `.env.example` dan `.env`, lalu menjalankan `boost:update` dan `boost:index-rules`.
@@ -169,7 +169,7 @@ Setiap penyesuaian yang melonggarkan gate dicatat di `docs/decisions.md`. Untuk 
 ## Memperbarui standar di proyek yang sudah adopsi
 
 1. Jalankan installer dengan `--dry-run`.
-2. File yang dilaporkan "Dibiarkan" sudah berbeda dari versi boosts-guidelines. Bandingkan dengan `diff PROYEK/<path> /Users/Bananay/Claude/boosts-guidelines/template/<path>`. Perbedaan bisa berasal dari rule tambahan yang direkam lewat `record-rule` di proyek itu, jadi jangan menimpanya begitu saja.
+2. File yang dilaporkan "Dibiarkan" sudah berbeda dari versi boosts-guidelines. Bandingkan dengan `diff PROYEK/<path> /path/ke/boosts-guidelines/template/<path>`. Perbedaan bisa berasal dari rule tambahan yang direkam lewat `record-rule` di proyek itu, jadi jangan menimpanya begitu saja.
 3. Gabungkan perubahan dari boosts-guidelines secara manual, atau pakai `--force` hanya untuk file yang tidak punya perubahan lokal. `docs/decisions.md` tidak pernah ditimpa.
 4. Untuk pembaruan yang hanya menyentuh gate, salin file ini dari `template/` ke proyek: `.claude/hooks/*.php`, `.claude/agents/boost-reviewer.md`, dan `.ai/guidelines/production-standards.md`. Lalu jalankan `php artisan boost:update` agar guideline tersalin ke `AGENTS.md`. Daftar file yang berubah per versi ada di `CHANGELOG.md`.
 4. Jalankan `php artisan boost:index-rules` dan ulangi langkah 5.
