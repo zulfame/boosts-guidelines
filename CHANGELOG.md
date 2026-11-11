@@ -10,11 +10,6 @@ Arti nomor versi di proyek ini:
 
 ## [Unreleased]
 
-### Changed
-
-- Rule `documentation.md` kini menyebut format changelog: mengikuti Keep a Changelog dan nomor versi mengikuti Semantic Versioning.
-- Changelog ini disusun ulang mengikuti format tersebut. Isinya tidak berubah.
-
 ## [1.1.0] - 2026-11-11
 
 Perbaikan dari uji adopsi dan pembuatan fitur oleh agent di proyek Laravel 12 yang belum memakai Boost (beberapa sesi Claude Code nyata, dinilai oleh penilai independen).
@@ -26,6 +21,7 @@ Perbaikan dari uji adopsi dan pembuatan fitur oleh agent di proyek Laravel 12 ya
 - `ADOPTION.md`: jalur `boost:install` non-interaktif beserta jebakannya, prasyarat repositori git dengan satu commit, dan langkah 9 dibagi menjadi Tahap A (perubahan uji dibiarkan) dan Tahap B (dikembalikan di pesan berikutnya).
 - Panduan skill kustom di `docs/laravel-boost.md`: agent memilih skill dari `description`, dan skill yang wajib dimuat didaftarkan di `boost-gate.json`.
 - Lisensi MIT.
+- Rule `documentation.md` menyebut format changelog: mengikuti Keep a Changelog, dan nomor versi mengikuti Semantic Versioning. Changelog ini sendiri mengikuti format itu.
 
 ### Changed
 
