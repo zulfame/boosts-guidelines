@@ -138,6 +138,12 @@ if ($added > 0) {
 $gate = json_decode((string) file_get_contents($source.'/stubs/boost-gate.base.json'), true);
 $installedSkills = installedSkills($target);
 $gate['skills'] = skillEntries($installedSkills);
+$customEntries = customSkillEntries($target, $installedSkills);
+
+if ($customEntries !== []) {
+    $gate['skills'] = array_merge($gate['skills'], $customEntries);
+    $report['merged'][] = 'boost-gate.json: '.count($customEntries).' entri skill kustom dipertahankan';
+}
 
 if (! $hasPhpstan) {
     $gate['quality']['static'] = '';
@@ -300,22 +306,7 @@ function installedSkills(string $target): array
  */
 function skillEntries(array $installed): array
 {
-    $map = [
-        'laravel-best-practices' => ['app/**/*.php', 'routes/**/*.php', 'database/**/*.php', 'config/**/*.php', 'bootstrap/app.php'],
-        'testing-best-practices' => ['tests/**'],
-        'pest-testing' => ['tests/**'],
-        'fortify-development' => ['app/Actions/Fortify/**'],
-        'inertia-react-development' => ['resources/js/**'],
-        'inertia-vue-development' => ['resources/js/**'],
-        'inertia-svelte-development' => ['resources/js/**'],
-        'livewire-development' => ['app/Livewire/**', 'resources/views/livewire/**', 'resources/views/components/**'],
-        'volt-development' => ['resources/views/livewire/**', 'resources/views/pages/**'],
-        'fluxui-development' => ['resources/views/**'],
-        'folio-routing' => ['resources/views/pages/**'],
-        'tailwindcss-development' => ['resources/css/**', 'resources/views/**'],
-        'pennant-development' => ['app/Features/**'],
-        'mcp-development' => ['app/Mcp/**'],
-    ];
+    $map = skillMap();
 
     $byGlob = [];
 
@@ -333,6 +324,58 @@ function skillEntries(array $installed): array
 
     foreach ($byGlob as $glob => $skills) {
         $entries[] = ['glob' => $glob, 'skills' => array_values(array_unique($skills))];
+    }
+
+    return $entries;
+}
+
+/**
+ * Boost skills and the paths where they must be loaded before editing.
+ *
+ * @return array<string, list<string>>
+ */
+function skillMap(): array
+{
+    return [
+        'laravel-best-practices' => ['app/**/*.php', 'routes/**/*.php', 'database/**/*.php', 'config/**/*.php', 'bootstrap/app.php'],
+        'testing-best-practices' => ['tests/**'],
+        'pest-testing' => ['tests/**'],
+        'fortify-development' => ['app/Actions/Fortify/**'],
+        'inertia-react-development' => ['resources/js/**'],
+        'inertia-vue-development' => ['resources/js/**'],
+        'inertia-svelte-development' => ['resources/js/**'],
+        'livewire-development' => ['app/Livewire/**', 'resources/views/livewire/**', 'resources/views/components/**'],
+        'volt-development' => ['resources/views/livewire/**', 'resources/views/pages/**'],
+        'fluxui-development' => ['resources/views/**'],
+        'folio-routing' => ['resources/views/pages/**'],
+        'tailwindcss-development' => ['resources/css/**', 'resources/views/**'],
+        'pennant-development' => ['app/Features/**'],
+        'mcp-development' => ['app/Mcp/**'],
+    ];
+}
+
+/**
+ * Entries of an existing boost-gate.json that name installed skills outside
+ * skillMap(), so the team's own skills keep their enforcement on --force.
+ *
+ * @param  list<string>  $installed
+ * @return list<array{glob: string, skills: list<string>}>
+ */
+function customSkillEntries(string $target, array $installed): array
+{
+    $path = $target.'/.claude/hooks/boost-gate.json';
+    $existing = is_file($path) ? json_decode((string) file_get_contents($path), true) : null;
+    $entries = [];
+
+    foreach (is_array($existing) ? ($existing['skills'] ?? []) : [] as $entry) {
+        $custom = array_values(array_filter(
+            (array) ($entry['skills'] ?? []),
+            fn ($skill): bool => in_array($skill, $installed, true) && ! array_key_exists($skill, skillMap()),
+        ));
+
+        if ($custom !== [] && isset($entry['glob'])) {
+            $entries[] = ['glob' => $entry['glob'], 'skills' => $custom];
+        }
     }
 
     return $entries;

@@ -15,7 +15,8 @@ Sepanjang dokumen ini, `boosts-guidelines` berarti folder repositori ini di mesi
 
 | Prasyarat | Cara memeriksa |
 | --- | --- |
-| Laravel 11.45 atau lebih baru (standar ini baru diuji di Laravel 12 dan 13) | `php artisan --version` |
+| Laravel 11.45 atau lebih baru (diuji di Laravel 12 dan 13) | `php artisan --version` |
+| Repositori git dengan minimal satu commit. Jika belum ada, jalankan `git init` lalu commit awal | `git log --oneline` |
 | PHP 8.2 atau lebih baru di PATH | `php -v` (hook gate memanggil `php`) |
 | Dependensi PHP terpasang | folder `vendor/` ada |
 | Dependensi JS terpasang | folder `node_modules/` ada, jika proyek punya `package.json` |
@@ -158,7 +159,7 @@ Semua penyesuaian gate ada di `.claude/hooks/boost-gate.json`:
 
 | Kebutuhan | Ubah |
 | --- | --- |
-| Peta skill kurang tepat untuk stack proyek | `skills` |
+| Peta skill kurang tepat untuk stack proyek, atau skill kustom di `.ai/skills` harus selalu dimuat untuk folder tertentu | `skills`, misalnya `{ "glob": "app/Exports/**", "skills": ["nama-skill"] }`. Tanpa entri, agent tetap bisa memilih skill itu dari `description`-nya |
 | Test suite lambat | `quality.tests`, misalnya `php artisan test --compact --parallel` |
 | Review terlalu mahal untuk proyek kecil | `review.enabled` menjadi `false` |
 | `search-docs` tidak perlu diwajibkan | `search_docs.required` menjadi `false` |

@@ -259,6 +259,16 @@ Bagian `description` adalah yang paling penting, karena agent memutuskan memuat 
 
 Setelah `boost:update`, skill disalin ke `.claude/skills/` dan dicatat di `boost.json`. Kalau folder skill di `.ai/skills` dihapus, update berikutnya juga menghapus salinannya.
 
+Skill tidak dicari lewat `search-docs`. `search-docs` hanya mencari dokumentasi paket. Skill muncul di daftar skill agent beserta `description`-nya, dan agent memilihnya dari kecocokan deskripsi itu. Pada uji sesi nyata, skill kustom `csv-export-conventions` dimuat agent sebagai langkah pertama untuk permintaan "tambah fitur ekspor CSV", tanpa disebut di prompt dan tanpa masuk ke peta gate, lalu semua konvensinya diikuti (nama file, delimiter, BOM, kolom `id`, baris total, `streamDownload`, lokasi class).
+
+Pemuatan lewat deskripsi itu bergantung pada kualitas `description`, jadi tidak dijamin. Jika sebuah skill harus selalu dimuat untuk folder tertentu, daftarkan di `skills` pada `.claude/hooks/boost-gate.json`:
+
+```json
+{ "glob": "app/Exports/**", "skills": ["csv-export-conventions"] }
+```
+
+Gate lalu menolak edit di path itu sampai skill dimuat. Installer mempertahankan entri skill kustom saat dijalankan ulang dengan `--force`, selama skill-nya masih terpasang di `.claude/skills`.
+
 Untuk mengganti skill bawaan, buat skill dengan nama yang sama, misalnya `.ai/skills/livewire-development/SKILL.md`. Skill dari `.ai/skills` selalu menang.
 
 ### Membuat MCP tool sendiri
@@ -545,7 +555,7 @@ Semua perilaku gate diatur di `.claude/hooks/boost-gate.json`, yang dibuat insta
 | Key | Isi |
 | --- | --- |
 | `exempt` | Path yang tidak dijaga gate, misalnya `.claude/**`, `.ai/**`, dan `vendor/**` |
-| `skills` | Peta glob ke skill wajib, dibuat dari skill yang terpasang di `.claude/skills` |
+| `skills` | Peta glob ke skill wajib. Skill bawaan Boost dibuat dari skill yang terpasang di `.claude/skills`. Skill kustom ditambahkan manual dan dipertahankan installer |
 | `search_docs` | Apakah `search-docs` wajib, dan untuk path mana |
 | `quality` | Perintah format, static analysis, test, dan pemeriksaan frontend, folder yang dipantau, ekstensi file sumber (`source_extensions`), serta batas `max_blocks` |
 | `review` | Apakah review wajib, nama subagent-nya, dan path yang memicu review |
@@ -615,7 +625,7 @@ Satu temuan dari sesi nyata: saat Read dan Edit dikirim dalam satu pesan, Claude
 - **Pint di Stop gate bisa merapikan baris lama.** Gate menjalankan Pint pada file PHP yang disentuh. Jika file itu belum rapi menurut Pint, baris lama ikut berubah (misalnya urutan trait) dan tersisa di `git diff` walaupun perubahan agent sudah dikembalikan. Matikan lewat `quality.format` jika tidak diinginkan.
 - **Biaya per giliran.** Stop gate menjalankan seluruh test setiap kali ada perubahan PHP, dan reviewer berjalan setiap ada perubahan kode aplikasi. Untuk suite yang lambat, ubah perintah `tests` (misalnya dengan `--parallel`). Untuk proyek kecil, review bisa dimatikan.
 - **Penolakan butuh sekitar 2 detik** karena percobaan ulang tadi. Edit yang diizinkan tidak terpengaruh.
-- **Penanda ringkasan percakapan belum terverifikasi di sesi nyata.** Gate mengenali penanda `compact_boundary` dan `isCompactSummary`. Jika penandanya ternyata berbeda, gate tetap menghitung bacaan sebelum ringkasan. Akibatnya gate jadi lebih longgar, bukan salah menolak.
+- **Setelah `/compact`, gate mengandalkan penanda ringkasan.** Gate mengenali penanda `compact_boundary` dan `isCompactSummary`. Jika penandanya ternyata berbeda, gate tetap menghitung bacaan sebelum ringkasan. Akibatnya gate jadi lebih longgar, bukan salah menolak.
 - **Gate adalah pagar pengaman, bukan batas keamanan.** Siapa pun yang memegang mesin bisa mematikannya dengan `disableAllHooks`.
 
 ## Troubleshooting

@@ -125,19 +125,22 @@ Sudah terbukti, termasuk di sesi Claude Code nyata (headless) pada proyek Larave
 - **Fitur nyata:** agent membangun CRUD kategori produk memakai paket yang sudah terpasang (spatie permission dan activitylog), tanpa dependensi baru, dengan 35 test lolos.
 - **Perbaikan versi 1.1.0:** pada uji ulang validasi gate, reviewer hanya memblokir perubahan di baris yang berubah dan melaporkan pelanggaran lama sebagai catatan warisan. Agent tidak memperbaiki kode lama, `docs/decisions.md` tidak berubah, dan pengembalian perubahan uji lolos tanpa review baru. Dibanding versi 1.0.1, validasi itu turun dari 32 menjadi 21 turn.
 - **Pembuatan fitur diulang dengan versi 1.1.0** (prompt dan kondisi awal sama): durasi sesi turun dari 11 menit 37 detik menjadi 7 menit 23 detik. Siklus review dan perbaikan turun dari 7 menit 40 detik (66%) menjadi 3 menit 29 detik (47%), dan putaran review dari 6 menjadi 4 (satu putaran terbuang karena reviewer dijalankan di latar belakang). Review hanya memblokir hal yang bisa ditunjuk ke rule: test rate limit yang hilang dan file test di atas 400 baris. Agent tidak mengubah `bootstrap/app.php`, menulis dua entri keputusan berstatus `diusulkan`, dan tidak menyentuh entri standar. Perkiraan pemakaian turun dari USD 2,8 menjadi USD 1,9 (setara tarif API, bukan tagihan).
+- **Skill kustom:** skill di `.ai/skills` dipasang `boost:update` ke `.claude/skills`, lalu pada permintaan fitur ekspor CSV agent memuatnya sebagai langkah pertama tanpa disebut di prompt dan tanpa masuk ke peta gate, dan mengikuti seluruh konvensinya. Agent juga mengungkapkan bahwa konvensi itu mewajibkan folder baru. Gate menolak edit sampai skill kustom dimuat jika skill itu didaftarkan di `boost-gate.json`, dan installer mempertahankan entri tersebut.
 - **Installer:** menghasilkan konfigurasi yang sama dengan yang disusun manual, aman dijalankan ulang, menggabungkan `.claude/settings.json` tanpa menghapus isinya, dan memperbaiki `boost.json` yang kehilangan `agents`.
 - **Arch test** menangkap pelanggaran yang disengaja.
 
-Belum terbukti, dan perlu diketahui:
+Prasyarat minimum proyek (di luar ini tidak dijamin):
 
-- Reset hitungan gate setelah percakapan diringkas (`/compact`). Gate mengenali penanda `compact_boundary`. Jika penandanya berbeda, gate menjadi lebih longgar, bukan salah menolak.
-- Hasil pembuatan fitur adalah satu kali jalan per versi, jadi sebagian selisihnya bisa berupa variasi antar-jalan. Jumlah turn agent bahkan naik (65 menjadi 86), tampaknya karena gaya kerjanya berbeda (lebih banyak edit kecil), jadi ukuran yang dipakai adalah durasi.
-- Reviewer versi 1.1.0 menilai lebih sempit. Pada fitur yang sama, izin dibuat lewat seeder yang tidak dijalankan saat deploy production. Reviewer versi 1.0.1 mengangkatnya sebagai cacat nyata, sedangkan versi 1.1.0 tidak memblokirnya. Agent mengungkapkannya sendiri sebagai pertanyaan terbuka di laporan dan `memory/PRD.md`, tetapi celah seperti ini bisa lolos dari review.
-- Proyek tanpa git hanya diuji dengan simulasi.
-- Linux dan Windows. Hook memakai shell POSIX (`cd`, `&&`) dan `git`, jadi Linux seharusnya berjalan, tetapi Windows tanpa WSL belum didukung.
-- Laravel 11. Boost mendukungnya, tetapi standar ini baru diuji di Laravel 12 dan 13.
-- Setiap skenario nyata dijalankan satu kali dengan satu model, jadi perilaku bisa bervariasi.
-- MySQL, request paralel, dan tampilan di browser.
+- Proyek Laravel 11.45 atau lebih baru, dengan `vendor/` dan `node_modules/` terpasang. Pengujian memakai Laravel 12 dan 13.
+- Repositori git dengan minimal satu commit. Untuk proyek baru cukup `git init` lalu commit awal. Gate memakai git untuk mengetahui file mana yang berubah.
+- PHP 8.2 atau lebih baru di PATH, serta shell POSIX. macOS dan Linux didukung. Windows memerlukan WSL.
+- Database apa pun yang dipakai test proyek. Laravel baru sudah membawa SQLite, dan itu yang dipakai pada pengujian.
+
+Hal yang perlu diketahui:
+
+- Setiap skenario nyata dijalankan satu kali per versi dengan satu model, jadi selisih antar-versi bisa mengandung variasi antar-jalan. Karena itu ukuran yang dipakai adalah durasi, bukan jumlah turn.
+- Reviewer versi 1.1.0 menilai lebih sempit: pada fitur yang sama, izin yang hanya dibuat lewat seeder tidak diblokir. Rule di `factories.md` kini menutup celah itu, dan agent juga mengungkapkannya sebagai pertanyaan terbuka.
+- Setelah percakapan diringkas (`/compact`), gate mengenali penanda `compact_boundary`. Jika penandanya berbeda, gate menjadi lebih longgar, bukan salah menolak.
 
 Batasan yang diketahui ada di bagian "Batasan yang perlu kamu tahu" di [docs/laravel-boost.md](docs/laravel-boost.md#batasan-yang-perlu-kamu-tahu).
 
@@ -147,3 +150,7 @@ Batasan yang diketahui ada di bagian "Batasan yang perlu kamu tahu" di [docs/lar
 - **Menguji perubahan:** jalankan installer ke salinan proyek Laravel di folder sementara, lalu pastikan arch test dan gate berfungsi. Cara pengujian yang sudah dipakai ada di `AGENTS.md`.
 - **Boost versi baru:** cek ulang hal yang bergantung pada versi, yaitu daftar tool MCP, nama skill, dan format `.ai/rules/index.md` yang dibaca gate. Perbarui tabel dukungan stack jika ada skill baru.
 - **Memperbarui proyek yang sudah adopsi:** jalankan installer lagi. File yang sudah diubah di proyek itu akan dilaporkan "Dibiarkan". Bandingkan dulu dengan versi di `template/`, gabungkan secara manual, baru pakai `--force` jika perlu.
+
+## Lisensi
+
+MIT. Lihat [LICENSE](LICENSE).

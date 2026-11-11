@@ -15,9 +15,13 @@ Yang berubah:
 - `ADOPTION.md`: jalur `boost:install` non-interaktif beserta jebakannya, dan langkah 9 dibagi menjadi Tahap A (perubahan uji dibiarkan) dan Tahap B (dikembalikan di pesan berikutnya).
 - Instruksi reviewer di Stop gate dan konteks SessionStart menyebut agar reviewer dijalankan di latar depan. Sebelumnya agent kadang menjalankannya di latar belakang, laporannya tidak terbaca, dan satu putaran review terbuang.
 - Rule baru di `factories.md` (kini 80 rules): data yang dibutuhkan fitur agar berjalan di production (izin, role dasar, pengaturan awal) tidak hanya dibuat oleh seeder, karena seeder tidak dijalankan saat deploy. Temuan dari uji pembuatan fitur.
+- Installer mempertahankan entri skill kustom di `boost-gate.json` saat dijalankan ulang dengan `--force`. Sebelumnya entri itu hilang karena peta dibuat ulang hanya dari skill bawaan Boost.
+- Lisensi MIT.
 - Dokumentasi memakai penunjuk `/path/ke/boosts-guidelines` alih-alih path absolut, dan menyebut platform serta versi Laravel yang diuji.
 
 Hasil uji ulang pembuatan fitur (prompt dan kondisi awal sama): durasi sesi turun dari 11 menit 37 detik menjadi 7 menit 23 detik, siklus review dan perbaikan dari 7 menit 40 detik menjadi 3 menit 29 detik, dan putaran review dari 6 menjadi 4. Agent tidak mengubah `bootstrap/app.php` dan tidak menulis keputusan berstatus `berlaku` atas nama pemilik. Satu kali jalan per versi. Reviewer yang lebih sempit tidak memblokir izin yang dibuat lewat seeder (tidak dijalankan saat deploy), tetapi agent mengungkapkannya sebagai pertanyaan terbuka.
+
+Hasil uji skill kustom (satu skill di `.ai/skills`, tidak ada di peta gate): agent memuat skill itu sebagai langkah pertama dari prompt yang tidak menyebutnya, mengikuti semua konvensinya, dan sesi selesai dalam 4 menit 5 detik dengan 42 test lolos dan reviewer `PASS` setelah dua putaran `FAIL` yang diperbaiki. Gate menolak edit di path yang dipetakan ke skill kustom sampai skill dimuat (diuji dengan simulasi hook).
 
 Hasil uji ulang validasi gate: turun dari 32 menjadi 21 turn, reviewer memblokir hanya penanda uji di baris yang berubah, dua pelanggaran lama dilaporkan tanpa diperbaiki, `docs/decisions.md` tidak berubah, dan pengembalian perubahan uji lolos tanpa review baru.
 
@@ -50,4 +54,4 @@ Isi:
 
 Diuji dengan Laravel 13.40, Laravel Boost 2.10.4, Laravel MCP 1.1, Pest 5.3, Larastan 3.14, Pint 1.32, PHP 8.5, dan Claude Code 2.1.
 
-Belum terbukti di sesi nyata: hook SessionStart di sesi baru, subagent `boost-reviewer` dalam alur nyata, dan reset hitungan gate setelah percakapan diringkas. Ketiganya divalidasi di langkah 9 `ADOPTION.md`.
+Hook SessionStart dan subagent `boost-reviewer` dibuktikan di sesi nyata pada versi 1.1.0 (lihat bagian itu di atas). Reset hitungan gate setelah `/compact` mengandalkan penanda `compact_boundary`. Jika penandanya berbeda, gate menjadi lebih longgar, bukan salah menolak. Langkah 9 `ADOPTION.md` memvalidasi gate di proyek tujuan.
