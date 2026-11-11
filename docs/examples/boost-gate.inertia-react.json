@@ -8,7 +8,10 @@
         "bootstrap/cache/**",
         "public/build/**",
         "AGENTS.md",
-        "CLAUDE.md"
+        "CLAUDE.md",
+        "resources/js/actions/**",
+        "resources/js/routes/**",
+        "resources/js/wayfinder/**"
     ],
     "skills": [
         {
@@ -86,7 +89,7 @@
     },
     "quality": {
         "enabled": true,
-        "max_blocks": 3,
+        "max_blocks": 1,
         "watch": [
             "app",
             "bootstrap/app.php",
@@ -125,6 +128,7 @@
     },
     "review": {
         "enabled": true,
+        "mode": "on_request",
         "agent": "boost-reviewer",
         "globs": [
             "app/**",

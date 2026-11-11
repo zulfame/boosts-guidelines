@@ -21,7 +21,7 @@ Laravel Boost memberi agent guidelines, skill, tool MCP, dan project rules. Semu
 Repositori ini menambahkan dua hal di atas Boost:
 
 1. **Standar kode produksi** yang berlaku umum: 2 guideline dan 80 rules di 28 file, dalam bahasa Indonesia.
-2. **Gate penegak** yang memaksa agent membaca rules, memuat skill, dan memanggil `search-docs` sebelum mengedit, serta memastikan format, static analysis, test, dan review lolos sebelum giliran selesai.
+2. **Gate penegak** yang memaksa agent membaca rules, memuat skill, dan memanggil `search-docs` sebelum mengedit, serta memastikan format, static analysis, dan test lolos sebelum giliran selesai. Review dijalankan sekali per fitur lewat `/review-fitur`.
 
 ## Isi repositori
 
@@ -35,8 +35,9 @@ Repositori ini menambahkan dua hal di atas Boost:
 | `template/.ai/guidelines/` | `production-standards.md` (standar umum, selalu dibaca agent) dan `project-memory.md` (instruksi `memory/PRD.md`) |
 | `template/.ai/rules/` | 28 file rule per folder Laravel |
 | `template/.claude/settings.json` | Pendaftaran hook gate |
-| `template/.claude/hooks/` | Script gate: `boost-context.php`, `boost-gate.php`, `boost-quality.php`, dan `lib.php` |
-| `template/.claude/agents/boost-reviewer.md` | Subagent reviewer yang wajib memberi `VERDICT: PASS` |
+| `template/.claude/hooks/` | Script gate: `boost-context.php`, `boost-gate.php`, `boost-quality.php`, dan pendukungnya (`lib.php`, `transcript.php`, `shell.php`, `review.php`, `review-scope.php`) |
+| `template/.claude/agents/boost-reviewer.md` | Subagent reviewer yang menilai perubahan dan menutup laporan dengan `VERDICT: PASS` atau `FAIL` |
+| `template/.claude/commands/review-fitur.md` | Perintah `/review-fitur`: review satu kali untuk seluruh perubahan fitur |
 | `template/tests/Unit/ArchTest.php` | 10 arch test Pest untuk aturan struktural |
 | `template/docs/decisions.md` | Catatan keputusan berisi 10 keputusan standar |
 | `stubs/boost-gate.base.json` | Konfigurasi gate dasar. Peta skill diisi installer sesuai proyek |
@@ -79,7 +80,7 @@ Ada empat bagian yang saling melengkapi:
 | --- | --- | --- |
 | Guidelines (`.ai/guidelines`) | Selalu, lewat `AGENTS.md` atau `CLAUDE.md` yang dibuat Boost | Standar umum (batas default, kualitas desain, perbaikan bug, dependensi) dan instruksi memori proyek |
 | Rules (`.ai/rules`) | Saat agent menyentuh folder yang cocok | Standar per folder: controller, model, migration, keamanan, API, frontend, test, dan lainnya |
-| Gate (`.claude/`) | Otomatis oleh Claude Code | Memaksa rules dibaca, skill dimuat, `search-docs` dipanggil, lalu format, PHPStan, test, dan review lolos |
+| Gate (`.claude/`) | Otomatis oleh Claude Code | Memaksa rules dibaca, skill dimuat, `search-docs` dipanggil, lalu format, PHPStan, dan test lolos. Review dijalankan satu kali per fitur lewat `/review-fitur` |
 | Catatan (`docs/decisions.md`, `memory/PRD.md`) | Saat ada keputusan atau perubahan produk | Keputusan teknis dan konteks produk yang dibagi ke semua agent |
 
 Gate terdiri dari tiga hook dan satu subagent:
@@ -88,8 +89,10 @@ Gate terdiri dari tiga hook dan satu subagent:
 | --- | --- | --- |
 | `boost-context.php` (SessionStart) | Sesi baru, dilanjutkan, `/clear`, dan setelah percakapan diringkas | Memasukkan aturan gate, peta skill, index rules, dan `memory/PRD.md` ke konteks |
 | `boost-gate.php` (PreToolUse) | Sebelum edit file dan perintah Bash yang menulis file | Menolak perubahan sampai syaratnya terpenuhi, dengan pesan berisi langkah persis |
-| `boost-quality.php` (Stop) | Saat agent hendak menyelesaikan giliran | Pint, PHPStan, seluruh test, pemeriksaan frontend, lalu review. Menahan paling banyak 3 kali per giliran |
-| `boost-reviewer` (subagent) | Dipanggil agent karena diminta Stop gate | Membandingkan perubahan dengan rules dan checklist produksi, lalu memberi `VERDICT: PASS` atau `FAIL` |
+| `boost-quality.php` (Stop) | Saat agent hendak menyelesaikan giliran | Pint, PHPStan, seluruh test, dan pemeriksaan frontend. Menahan paling banyak 1 kali per giliran. Review hanya diwajibkan bila `review.mode` adalah `every_turn` |
+| `boost-reviewer` (subagent) | Saat user menjalankan `/review-fitur` (bawaan), atau otomatis menurut `review.mode` | Membandingkan perubahan dengan rules dan checklist produksi, lalu memberi `VERDICT: PASS` atau `FAIL` |
+
+Review itu mahal, jadi bawaannya tidak berjalan di setiap giliran: kamu menjalankannya sekali saat fitur sudah sesuai. Mode lain dan perkiraan biayanya ada di [docs/laravel-boost.md](docs/laravel-boost.md#mode-review-dan-biaya).
 
 Penjelasan lengkap tentang Boost sendiri (cara guidelines disusun, cara skill dipilih, cara tool MCP dijalankan) ada di [docs/laravel-boost.md](docs/laravel-boost.md).
 
@@ -121,7 +124,8 @@ Sudah terbukti, termasuk di sesi Claude Code nyata (headless) pada proyek Larave
 
 - **Adopsi oleh agent:** agent mengikuti `ADOPTION.md` dari awal, menangkap `node_modules` yang belum ada, berhenti meminta persetujuan dependensi, memasang Boost dan standar, mengisi `docs/decisions.md` dari kondisi kode nyata, dan tidak mengubah kode aplikasi. Sekitar 25 turn dan 2,7 menit.
 - **Hook SessionStart dan gate edit:** edit ke file model ditolak dengan daftar rule, skill, dan `search-docs`, lalu diizinkan setelah dipenuhi. Pada permintaan fitur, agent menyiapkan semuanya sendiri sebelum menulis (16 rule, 2 skill, dan `search-docs` sebelum edit pertama) sehingga gate tidak perlu menolak.
-- **Stop gate dan reviewer:** berjalan di alur nyata, termasuk batas penahanan dan penguraian vonis `PASS` dan `FAIL`.
+- **Stop gate dan reviewer:** berjalan di alur nyata, termasuk batas penahanan dan penguraian vonis `PASS` dan `FAIL`. Dari 1.2.0 vonis dibaca dari laporan subagent yang datang belakangan (Claude Code selalu menjalankan subagent di latar belakang). Pada transkrip sesi nyata dari proyek lain, 12 panggilan reviewer terbaca (7 `PASS`, 5 `FAIL`), sebelumnya semuanya dianggap tanpa vonis.
+- **Review sesuai permintaan (1.2.0):** pada sesi nyata, fitur filter status selesai dalam 2 menit tanpa satu pun penahanan Stop gate dan tanpa reviewer yang dijalankan agent sendiri. Agent menutup laporan dengan menyebut `/review-fitur`. Perintah itu lalu menjalankan `review-scope.php`, satu reviewer, membaca laporannya yang datang belakangan, dan menyimpulkan `PASS` tanpa review kedua. Jalur `FAIL`, gate commit, dan batas penahanan baru diuji dengan simulasi hook.
 - **Fitur nyata:** agent membangun CRUD kategori produk memakai paket yang sudah terpasang (spatie permission dan activitylog), tanpa dependensi baru, dengan 35 test lolos.
 - **Perbaikan versi 1.1.0:** pada uji ulang validasi gate, reviewer hanya memblokir perubahan di baris yang berubah dan melaporkan pelanggaran lama sebagai catatan warisan. Agent tidak memperbaiki kode lama, `docs/decisions.md` tidak berubah, dan pengembalian perubahan uji lolos tanpa review baru. Dibanding versi 1.0.1, validasi itu turun dari 32 menjadi 21 turn.
 - **Pembuatan fitur diulang dengan versi 1.1.0** (prompt dan kondisi awal sama): durasi sesi turun dari 11 menit 37 detik menjadi 7 menit 23 detik. Siklus review dan perbaikan turun dari 7 menit 40 detik (66%) menjadi 3 menit 29 detik (47%), dan putaran review dari 6 menjadi 4 (satu putaran terbuang karena reviewer dijalankan di latar belakang). Review hanya memblokir hal yang bisa ditunjuk ke rule: test rate limit yang hilang dan file test di atas 400 baris. Agent tidak mengubah `bootstrap/app.php`, menulis dua entri keputusan berstatus `diusulkan`, dan tidak menyentuh entri standar. Perkiraan pemakaian turun dari USD 2,8 menjadi USD 1,9 (setara tarif API, bukan tagihan).

@@ -5,17 +5,26 @@
  *  - read every rule file in .ai/rules whose globs match the target path,
  *  - loaded every skill mapped to that path in boost-gate.json,
  *  - called search-docs at least once (for paths that require it).
+ *
+ * With review.mode "on_commit" it also refuses `git commit` until the
+ * boost-reviewer subagent has given a passing verdict for the changes.
  */
 
 declare(strict_types=1);
 
 require __DIR__.'/lib.php';
+require __DIR__.'/shell.php';
+require __DIR__.'/review.php';
 
 $input = boostReadInput();
 $root = boostProjectDir($input);
 $config = boostConfig($root);
 $toolName = (string) ($input['tool_name'] ?? '');
 $toolInput = is_array($input['tool_input'] ?? null) ? $input['tool_input'] : [];
+
+if ($toolName === 'Bash' && boostIsGitCommit((string) ($toolInput['command'] ?? ''))) {
+    boostGuardCommit($input, $root, $config);
+}
 
 $targets = match (true) {
     in_array($toolName, ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'], true) => [(string) ($toolInput['file_path'] ?? $toolInput['notebook_path'] ?? '')],
@@ -113,48 +122,26 @@ function boostMissingRequirements(array $events, array $paths, string $root, arr
     return [$missingRules, $missingSkills, $needsSearchDocs];
 }
 
-/**
- * Find files a shell command writes to: redirections, tee, in-place sed or perl,
- * and the destination of cp or mv. This is a heuristic, not a shell parser.
- *
- * @return list<string>
- */
-function boostBashWriteTargets(string $command): array
+function boostGuardCommit(array $input, string $root, array $config): void
 {
-    $targets = [];
+    $review = $config['review'] ?? [];
 
-    // A redirect is ">" or ">>" not preceded by a digit, "&", "<", ">", "=" or "-",
-    // so PHP and JS operators such as "=>" and "->" inside commands are ignored.
-    if (preg_match_all('/(?<![0-9&<>=\-])>{1,2}\s*([^\s;&|<>]+)/', $command, $matches)) {
-        $targets = array_merge($targets, $matches[1]);
+    if (! ($review['enabled'] ?? false) || boostReviewMode($review) !== 'on_commit') {
+        return;
     }
 
-    if (preg_match_all('/\btee\s+(?:-a\s+)?([^\s;&|<>]+)/', $command, $matches)) {
-        $targets = array_merge($targets, $matches[1]);
+    $files = boostReviewableFiles(boostChangedSince($root, null), $config, $root);
+    $problem = boostReviewProblem(boostTranscriptEvents($input['transcript_path'] ?? null, $root), $files, $review);
+
+    if ($problem === null) {
+        return;
     }
 
-    foreach (preg_split('/[;&|]+/', $command) ?: [] as $segment) {
-        $tokens = preg_split('/\s+/', trim($segment)) ?: [];
-        $program = $tokens[0] ?? '';
-
-        $inPlace = ($program === 'sed' && preg_grep('/^-i/', $tokens))
-            || ($program === 'perl' && preg_grep('/^-[a-z]*i/', $tokens));
-
-        if ($inPlace) {
-            foreach (array_slice($tokens, 1) as $token) {
-                if (preg_match('/^[\w.\/-]+\.[a-z]{1,5}$/i', trim($token, '\'"'))) {
-                    $targets[] = trim($token, '\'"');
-                }
-            }
-        }
-
-        if (in_array($program, ['cp', 'mv'], true) && count($tokens) >= 3) {
-            $targets[] = trim((string) end($tokens), '\'"');
-        }
-    }
-
-    return array_values(array_filter(array_map(
-        fn (string $target): string => trim($target, '\'"'),
-        $targets,
-    ), fn (string $target): bool => $target !== '' && ! str_starts_with($target, '/dev/')));
+    boostEmit([
+        'hookSpecificOutput' => [
+            'hookEventName' => 'PreToolUse',
+            'permissionDecision' => 'deny',
+            'permissionDecisionReason' => "Boost gate menahan commit sampai perubahan direview (review.mode: on_commit).\n".$problem,
+        ],
+    ]);
 }

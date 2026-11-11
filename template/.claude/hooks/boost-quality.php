@@ -2,8 +2,10 @@
 
 /**
  * Stop gate: before the agent may end its turn, the files changed in this turn
- * are formatted, statically analysed, and tested, and application changes are
- * reviewed by the boost-reviewer subagent with a passing verdict.
+ * are formatted, statically analysed, and tested. When review.mode is
+ * "every_turn", application changes must also have a passing verdict from the
+ * boost-reviewer subagent. In the default mode ("on_request") the review runs
+ * only when the user asks for it with /review-fitur.
  *
  * To avoid an endless loop the gate blocks at most `max_blocks` times per turn,
  * then lets the turn end with a visible warning.
@@ -12,6 +14,8 @@
 declare(strict_types=1);
 
 require __DIR__.'/lib.php';
+require __DIR__.'/shell.php';
+require __DIR__.'/review.php';
 
 $input = boostReadInput();
 $root = boostProjectDir($input);
@@ -44,8 +48,8 @@ if ($quality['enabled'] ?? false) {
     $problems = boostRunQualityChecks($changed, $quality, $root);
 }
 
-if ($problems === [] && ($review['enabled'] ?? false)) {
-    $reviewProblem = boostReviewProblem($turnEvents, $changed, $review);
+if ($problems === [] && ($review['enabled'] ?? false) && boostReviewMode($review) === 'every_turn') {
+    $reviewProblem = boostReviewProblem($turnEvents, boostReviewableFiles($changed, $config, $root), $review);
 
     if ($reviewProblem !== null) {
         $problems[] = $reviewProblem;
@@ -58,7 +62,7 @@ if ($problems === []) {
     exit(0);
 }
 
-$maxBlocks = (int) ($quality['max_blocks'] ?? 3);
+$maxBlocks = (int) ($quality['max_blocks'] ?? 1);
 
 if ($counter['blocks'] >= $maxBlocks) {
     @unlink($counterFile);
@@ -73,7 +77,7 @@ file_put_contents($counterFile, json_encode($counter));
 
 boostEmit([
     'decision' => 'block',
-    'reason' => "Boost gate: pekerjaan belum boleh dianggap selesai.\n\n".implode("\n\n", $problems)."\n\nPerbaiki, lalu selesaikan giliran lagi. Jangan mengubah kode di luar permintaan hanya demi lolos gate, dan jangan menulis keputusan atas nama pemilik. Sebutkan hal seperti itu ke user di laporan akhir. (Percobaan ".$counter['blocks'].' dari '.$maxBlocks.')',
+    'reason' => "Boost gate: pekerjaan belum selesai.\n\n".implode("\n\n", $problems)."\n\nPerbaiki, lalu selesaikan giliran lagi. Jangan mengubah kode di luar permintaan demi lolos gate, dan jangan menulis keputusan atas nama pemilik. (Percobaan ".$counter['blocks'].' dari '.$maxBlocks.')',
 ]);
 
 /**
@@ -250,65 +254,6 @@ function boostRunQualityChecks(array $changed, array $quality, string $root): ar
     return $problems;
 }
 
-function boostReviewProblem(array $turnEvents, array $changed, array $review): ?string
-{
-    $reviewable = array_values(array_filter($changed, fn (string $file): bool => boostMatchesAny($review['globs'] ?? [], $file)));
-
-    if ($reviewable === []) {
-        return null;
-    }
-
-    $agent = (string) ($review['agent'] ?? 'boost-reviewer');
-    $lastEdit = -1;
-    $lastReview = null;
-
-    foreach ($turnEvents as $i => $event) {
-        if ($event['kind'] === 'edit' || ($event['kind'] === 'bash' && boostLooksLikeWrite($event['value']))) {
-            $lastEdit = $i;
-        }
-
-        if ($event['kind'] === 'agent' && $event['value'] === $agent) {
-            $lastReview = ['index' => $i, 'result' => $event['result'] ?? ''];
-        }
-    }
-
-    $instruction = 'Jalankan subagent `'.$agent.'` dengan tool Agent (subagent_type: '.$agent.'), di latar depan tanpa run_in_background, dan berikan daftar file ini: '.implode(', ', $reviewable).'. Sebutkan juga file yang berubah sejak review sebelumnya, jika ada. Jangan menyertakan kesimpulan, klaim, atau daftar "trade-off yang sudah diterima" di prompt: reviewer memeriksa sendiri dari kode.';
-
-    if ($lastReview === null || $lastReview['index'] < $lastEdit) {
-        return "Review belum dijalankan setelah perubahan terakhir.\n".$instruction;
-    }
-
-    $verdict = boostReviewVerdict($lastReview['result']);
-
-    if ($verdict === null) {
-        return "Laporan reviewer tidak ditutup dengan baris VERDICT. Jika hasilnya hanya pesan bahwa agent berjalan di latar belakang, jalankan review lagi di latar depan.\n".$instruction;
-    }
-
-    if ($verdict !== 'PASS') {
-        return "Reviewer memberi VERDICT: FAIL. Perbaiki hanya temuan BLOKIR yang ada di perubahanmu. Catatan warisan di kode lama tidak diperbaiki, cukup disebutkan ke user di laporan akhir. Lalu jalankan review ulang.\n".$instruction;
-    }
-
-    return null;
-}
-
-/**
- * The verdict is the last "VERDICT: PASS|FAIL" in the report, so a report that
- * quotes an earlier verdict cannot pass by accident.
- */
-function boostReviewVerdict(string $report): ?string
-{
-    if (preg_match_all('/VERDICT:\s*(PASS|FAIL)/', $report, $matches) === 0) {
-        return null;
-    }
-
-    return end($matches[1]);
-}
-
-function boostLooksLikeWrite(string $command): bool
-{
-    return preg_match('/(?<![0-9&<>=\-])>{1,2}\s*[^\s&]|\btee\s|\bsed\s+-i|\bperl\s+-[a-z]*i|\b(cp|mv)\s/', $command) === 1;
-}
-
 /**
  * @return array{0: int, 1: string}
  */
@@ -326,7 +271,7 @@ function boostRun(string $template, array $files, string $root): array
 
 function boostTrim(string $output): string
 {
-    $output = trim($output);
+    $output = trim((string) preg_replace('/\e\[[0-9;]*[A-Za-z]/', '', $output));
 
-    return strlen($output) > 3000 ? substr($output, 0, 3000)."\n(dipotong)" : $output;
+    return strlen($output) > 1500 ? substr($output, 0, 1500)."\n(dipotong)" : $output;
 }

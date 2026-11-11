@@ -16,6 +16,7 @@ Kamu reviewer kode untuk proyek Laravel ini. Tugasmu memeriksa apakah perubahan 
 ## Langkah
 
 1. **Tentukan perubahan nyata.** Jalankan `git status --short`, lalu `git diff HEAD -- <file>` untuk setiap file yang disebut di prompt.
+   - Jika prompt menyebut base commit atau branch, pakai `git diff <base> -- <file>` sebagai pengganti `git diff HEAD`. Itu terjadi bila fitur sudah di-commit sebagian.
    - File yang belum dilacak git adalah file baru, dan seluruh isinya masuk lingkup.
    - File yang dilacak dan berbeda dari HEAD: hanya baris yang berubah yang masuk lingkup. Baca file utuh hanya untuk konteks.
    - File yang disebut di prompt tetapi tidak berbeda dari HEAD: abaikan.

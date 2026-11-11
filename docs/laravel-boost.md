@@ -522,9 +522,9 @@ boosts-guidelines menambahkan tiga lapis penegak untuk Claude Code. Cara memasan
 
 | Lapis | Bentuknya di proyek | Yang dijamin |
 | --- | --- | --- |
-| Gate hook | `.claude/settings.json` dan `.claude/hooks/` | Agent tidak bisa mengedit file sebelum membaca rules, memuat skill, dan memanggil `search-docs`. Agent tidak bisa menyelesaikan giliran sebelum format, static analysis, test, dan review lolos |
+| Gate hook | `.claude/settings.json` dan `.claude/hooks/` | Agent tidak bisa mengedit file sebelum membaca rules, memuat skill, dan memanggil `search-docs`. Agent tidak bisa menyelesaikan giliran sebelum format, static analysis, dan test lolos. Review dijalankan sekali per fitur lewat `/review-fitur` |
 | Arch test | `tests/Unit/ArchTest.php` | Aturan struktural dicek mesin, siapa pun penulisnya |
-| Reviewer | `.claude/agents/boost-reviewer.md` | Perubahan dibandingkan dengan rules yang berlaku, dan hasilnya wajib `VERDICT: PASS` |
+| Reviewer | `.claude/agents/boost-reviewer.md` dan `.claude/commands/review-fitur.md` | Perubahan dibandingkan dengan rules yang berlaku, dengan hasil `VERDICT: PASS` atau `FAIL` |
 
 Gate hanya memastikan rules dibaca. Kepatuhan isinya dijaga oleh arch test dan reviewer.
 
@@ -534,7 +534,7 @@ Gate hanya memastikan rules dibaca. Kepatuhan isinya dijaga oleh arch test dan r
 | --- | --- | --- |
 | `SessionStart` (`boost-context.php`) | Sesi baru, dilanjutkan, `/clear`, dan setelah percakapan diringkas | Memasukkan aturan gate, peta skill wajib, index rules, dan isi `memory/PRD.md` ke konteks agent |
 | `PreToolUse` (`boost-gate.php`) | Sebelum `Edit`, `Write`, `MultiEdit`, `NotebookEdit`, dan perintah Bash yang menulis file | Menolak perubahan sampai semua rule yang cocok dibaca, skill yang dipetakan dimuat, dan `search-docs` dipanggil (untuk kode aplikasi) |
-| `Stop` (`boost-quality.php`) | Saat agent hendak menyelesaikan giliran | Merapikan file PHP yang berubah dengan Pint, menjalankan PHPStan untuk file itu, menjalankan seluruh test, menjalankan pemeriksaan frontend jika ada, lalu mewajibkan review dengan `VERDICT: PASS` |
+| `Stop` (`boost-quality.php`) | Saat agent hendak menyelesaikan giliran | Merapikan file PHP yang berubah dengan Pint, menjalankan PHPStan untuk file itu, menjalankan seluruh test, dan menjalankan pemeriksaan frontend jika ada. Review hanya diwajibkan bila `review.mode` adalah `every_turn` |
 
 Contoh pesan penolakan, saat README diedit tanpa membaca rule dokumentasi:
 
@@ -554,15 +554,36 @@ Semua perilaku gate diatur di `.claude/hooks/boost-gate.json`, yang dibuat insta
 
 | Key | Isi |
 | --- | --- |
-| `exempt` | Path yang tidak dijaga gate, misalnya `.claude/**`, `.ai/**`, dan `vendor/**` |
+| `exempt` | Path yang tidak dijaga gate dan tidak dihitung sebagai perubahan, misalnya `.claude/**`, `.ai/**`, `vendor/**`, dan kode hasil generate seperti `resources/js/wayfinder/**` |
 | `skills` | Peta glob ke skill wajib. Skill bawaan Boost dibuat dari skill yang terpasang di `.claude/skills`. Skill kustom ditambahkan manual dan dipertahankan installer |
 | `search_docs` | Apakah `search-docs` wajib, dan untuk path mana |
-| `quality` | Perintah format, static analysis, test, dan pemeriksaan frontend, folder yang dipantau, ekstensi file sumber (`source_extensions`), serta batas `max_blocks` |
-| `review` | Apakah review wajib, nama subagent-nya, dan path yang memicu review |
+| `quality` | Perintah format, static analysis, test, dan pemeriksaan frontend, folder yang dipantau, ekstensi file sumber (`source_extensions`), serta batas `max_blocks` (bawaan 1) |
+| `review` | Apakah review aktif, `mode`-nya, nama subagent, dan path (`globs`) yang direview |
 
 Rules yang wajib dibaca tidak diatur di sini. Gate mengambilnya langsung dari `.ai/rules/index.md`, jadi rule baru otomatis ikut dijaga.
 
 Untuk mematikan sementara di satu mesin, tambahkan `"disableAllHooks": true` di `.claude/settings.local.json`. File itu tidak di-commit, jadi gate tetap aktif untuk anggota tim lain. Untuk melonggarkan sebagian, set `"enabled": false` di `quality` atau `review`, atau `"required": false` di `search_docs`.
+
+### Mode review dan biaya
+
+Review adalah bagian paling mahal dari gate, jadi kapan ia berjalan bisa dipilih lewat `review.mode`:
+
+| Mode | Kapan review berjalan | Cocok untuk |
+| --- | --- | --- |
+| `on_request` (bawaan) | Hanya saat kamu menjalankan `/review-fitur`, biasanya sekali saat fitur sudah sesuai | Pekerjaan yang direvisi berkali-kali di tengah jalan, dan sesi yang biayanya dipantau |
+| `on_commit` | Otomatis sebelum `git commit`: commit ditahan sampai review `PASS` untuk perubahan yang belum di-commit | Tim yang meng-commit satu kali per fitur |
+| `every_turn` | Setiap giliran yang mengubah kode aplikasi | Pekerjaan yang jarang direvisi dan butuh penegakan paling ketat |
+
+Dengan `on_request`, Stop gate tetap menjalankan format, static analysis, dan test setiap kali ada perubahan, karena itu murah. `/review-fitur` menentukan berkas lewat `php .claude/hooks/review-scope.php [base]`: perubahan terhadap `HEAD` (atau base commit atau branch yang kamu berikan, bila fitur sudah di-commit sebagian), dibatasi `review.globs` dan tanpa path di `exempt`. Reviewer dijalankan satu kali, temuan BLOKIR diperbaiki, lalu paling banyak satu review ulang untuk berkas yang diperbaiki. Area yang tidak perlu direview, misalnya tampilan, cukup dihapus dari `review.globs`.
+
+Claude Code menjalankan subagent di latar belakang. Panggilan Agent hanya menjawab "Async agent launched", dan laporan sebenarnya datang belakangan sebagai pesan terpisah dari harness. Gate mencocokkan laporan itu lewat `agentId` dan membaca baris `VERDICT:` di dalamnya. Selama laporan belum masuk, gate meminta agent menunggu, bukan menjalankan reviewer lagi. Hanya baris laporan yang diberi indentasi oleh harness yang dibaca, sehingga baris `VERDICT` palsu di kolom nol diabaikan.
+
+Biaya yang perlu diketahui dari pemakaian nyata, bukan perkiraan umum:
+
+- Token reviewer sendiri kecil dibanding sesi utama (dalam satu sesi panjang, sekitar 1,1 juta token untuk 29 reviewer, dibanding ratusan juta token baca cache sesi utama). Mahalnya datang dari giliran agent utama yang dipicu review dan penahanan, karena setiap giliran membaca ulang seluruh konteks.
+- Dalam satu sesi 11 jam dengan 56 prompt, giliran sesudah penahanan gate menghabiskan sekitar 15% respons agent utama. Pemicu terbesar pemakaian tetap konteks sesi yang rata-rata sekitar 440 ribu token di setiap respons.
+- Karena itu, satu sesi per fitur lebih menghemat daripada mengurangi review. Mulai sesi baru (atau `/clear`) setelah fitur selesai, dan jangan mencampur beberapa fitur di satu sesi.
+- Setelah `/compact`, rules dan skill harus dibaca ulang. Itu menambah isi rules dan skill ke konteks lagi, jadi ringkas konteks pada jeda alami, bukan di tengah pekerjaan.
 
 ### Lapis 2: arch test
 
@@ -591,7 +612,7 @@ Ia menilai perubahan, bukan seluruh file. Temuannya dibagi empat tingkat:
 | KEPUTUSAN USER | Penyimpangan beralasan teknis yang menunggu persetujuan pemilik | Tidak |
 | SARAN | Gaya, redaksi, atau konsistensi dokumen | Tidak |
 
-Laporan ditutup dengan `VERDICT: PASS` (tidak ada BLOKIR) atau `VERDICT: FAIL`. Stop gate membaca kemunculan `VERDICT` yang terakhir. Jika agent mengubah file lagi setelah review, review harus diulang. Pada review ulang, reviewer memverifikasi temuan sebelumnya dan tidak memperluas jenis temuan. Tanpa git, seluruh isi file yang disebut dianggap masuk lingkup.
+Laporan ditutup dengan `VERDICT: PASS` (tidak ada BLOKIR) atau `VERDICT: FAIL`. Gate membaca kemunculan `VERDICT` yang terakhir. Pada mode `every_turn` dan `on_commit`, review harus diulang bila agent mengubah file lagi setelah review. Pada review ulang, reviewer memverifikasi temuan sebelumnya dan tidak memperluas jenis temuan. Tanpa git, seluruh isi file yang disebut dianggap masuk lingkup.
 
 Rancangan ini lahir dari satu temuan nyata. Reviewer versi awal menilai seluruh file yang disentuh dan memberi `FAIL` karena pelanggaran lama. Karena Stop gate mewajibkan `PASS`, agent akhirnya memperbaiki kode lama dan menulis entri keputusan atas nama pemilik, jauh di luar yang diminta.
 
@@ -609,10 +630,13 @@ Rancangan ini lahir dari satu temuan nyata. Reviewer versi awal menilai seluruh 
 | Skill yang dimuat dengan prefix plugin | Dikenali |
 | Stop tanpa perubahan file | Diizinkan |
 | Stop dengan error tipe di file PHP | Ditolak oleh PHPStan |
-| Stop dengan kode benar tetapi belum direview | Ditolak, agent diminta menjalankan `boost-reviewer` |
-| Stop dengan reviewer `FAIL` | Ditolak |
-| Stop dengan reviewer `PASS` | Diizinkan |
-| Stop gagal 4 kali berturut-turut | 3 kali ditolak, lalu dilepas dengan peringatan |
+| Stop dengan kode benar tanpa review (`on_request`, bawaan) | Diizinkan |
+| Stop dengan kode benar tanpa review (`every_turn`) | Ditolak, agent diminta menjalankan `boost-reviewer` |
+| Laporan reviewer async belum masuk | Ditolak dengan pesan menunggu, tanpa meminta reviewer dijalankan lagi |
+| Laporan reviewer async `PASS` atau `FAIL` yang masuk belakangan | Dibaca sesuai isinya, termasuk di transkrip sesi nyata |
+| Baris `VERDICT` palsu di kolom nol laporan | Diabaikan |
+| `git commit` tanpa review (`on_commit`) | Ditolak. Dengan review `PASS`, diizinkan |
+| Stop gagal setelah `max_blocks` (bawaan 1) | Ditolak sekali, lalu dilepas dengan peringatan |
 | Sesi nyata: edit README tanpa membaca rule dokumentasi | Ditolak |
 | Sesi nyata: Stop gate di akhir giliran | Berjalan dan lolos |
 
@@ -620,8 +644,9 @@ Satu temuan dari sesi nyata: saat Read dan Edit dikirim dalam satu pesan, Claude
 
 ### Batasan yang perlu kamu tahu
 
+- **Format pesan laporan subagent bergantung pada Claude Code.** Gate membaca laporan dari pesan berformat `<agent-message from="...">` di transkrip. Jika versi Claude Code mengubah format itu, vonis tidak terbaca dan gate menahan (aman, tetapi mengganggu). Periksa saat Claude Code diperbarui.
 - **Dibaca belum tentu dipatuhi.** Gate hanya menjamin rules dibaca. Arch test dan reviewer yang menjaga isinya.
-- **Deteksi tulis lewat Bash adalah heuristik.** Gate mengenali redirect (`>` dan `>>`, tetapi bukan operator `=>` atau `->`), `tee`, `sed -i`, `perl -i`, `cp`, dan `mv`. Cara lain, misalnya skrip `python3`, `php -r "file_put_contents(...)"`, dan `php artisan make:*`, lolos dari gate edit. Stop gate dan reviewer tetap memeriksa hasilnya. Pada uji pembuatan fitur, ini tidak merugikan karena agent sudah membaca rules di awal sesi.
+- **Deteksi tulis lewat Bash adalah heuristik.** Isi heredoc dan string bertanda kutip yang berisi spasi dibuang dulu, supaya `>` di dalam skrip atau teks tidak dibaca sebagai redirect ke file. Gate mengenali redirect (`>` dan `>>`, tetapi bukan operator `=>` atau `->`), `tee`, `sed -i`, `perl -i`, `cp`, dan `mv`. Cara lain, misalnya skrip `python3`, `php -r "file_put_contents(...)"`, dan `php artisan make:*`, lolos dari gate edit. Stop gate dan reviewer tetap memeriksa hasilnya. Pada uji pembuatan fitur, ini tidak merugikan karena agent sudah membaca rules di awal sesi.
 - **Pint di Stop gate bisa merapikan baris lama.** Gate menjalankan Pint pada file PHP yang disentuh. Jika file itu belum rapi menurut Pint, baris lama ikut berubah (misalnya urutan trait) dan tersisa di `git diff` walaupun perubahan agent sudah dikembalikan. Matikan lewat `quality.format` jika tidak diinginkan.
 - **Biaya per giliran.** Stop gate menjalankan seluruh test setiap kali ada perubahan PHP, dan reviewer berjalan setiap ada perubahan kode aplikasi. Untuk suite yang lambat, ubah perintah `tests` (misalnya dengan `--parallel`). Untuk proyek kecil, review bisa dimatikan.
 - **Penolakan butuh sekitar 2 detik** karena percobaan ulang tadi. Edit yang diizinkan tidak terpengaruh.
@@ -814,7 +839,9 @@ Pelajaran yang paling berguna:
 - Penanda sementara seperti "uji gate" sebagai isi perubahan uji ditolak reviewer, karena komentar harus menjelaskan alasan. Gunakan perubahan komentar yang bermakna.
 - Pada pembuatan fitur yang sama, reviewer versi 1.1.0 memangkas durasi sesi sekitar 36% dan siklus review sekitar 54%, tanpa menurunkan test atau menambah dependensi. Perbandingan itu satu kali jalan per versi, jadi sebagian selisih bisa berupa variasi antar-jalan.
 - Reviewer yang menilai lebih sempit punya harga: celah desain yang tidak melanggar rule tertulis lebih mudah lolos. Contohnya izin fitur yang dibuat lewat seeder, yang tidak dijalankan saat deploy production. Rules dan checklist yang mencantumkan kebutuhan production secara eksplisit menjadi lebih penting, dan agent perlu terus melaporkan hal seperti ini ke user.
-- Agent kadang menjalankan reviewer di latar belakang, sehingga laporannya tidak terbaca dan satu putaran terbuang.
+- Claude Code selalu menjalankan subagent di latar belakang, dan tool Agent tidak punya opsi latar depan. Memerintahkan agent menjalankan reviewer "di latar depan" tidak berhasil. Gate harus membaca laporan yang datang belakangan, bukan jawaban peluncuran.
+- Review otomatis di setiap giliran tidak sepadan untuk pekerjaan yang direvisi berkali-kali. Review sekali per fitur (`on_request`) menghasilkan sesi tanpa penahanan, dengan jaminan kualitas yang tetap tersedia lewat `/review-fitur`.
+- Pada sesi nyata `/review-fitur` untuk fitur kecil berjalan sekitar 20 detik dengan satu reviewer.
 
 ### Paket pendamping: laravel/pao
 

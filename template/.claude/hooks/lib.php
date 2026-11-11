@@ -10,6 +10,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__.'/transcript.php';
+
 function boostReadInput(): array
 {
     $raw = stream_get_contents(STDIN);
@@ -149,147 +151,6 @@ function boostSkillsFor(string $relativePath, array $config): array
     }
 
     return array_values(array_unique($skills));
-}
-
-/**
- * Parse the transcript into a flat list of events, starting after the last
- * compaction so that anything the agent no longer has in context is ignored.
- * Tool calls that failed or were denied are skipped.
- *
- * @return list<array{kind: string, value: string, time: string, result?: string}>
- */
-function boostTranscriptEvents(?string $transcriptPath, string $root): array
-{
-    if ($transcriptPath === null || ! is_file($transcriptPath)) {
-        return [];
-    }
-
-    $entries = [];
-    $failedToolIds = [];
-    $toolResults = [];
-
-    foreach (file($transcriptPath, FILE_IGNORE_NEW_LINES) ?: [] as $line) {
-        $entry = json_decode($line, true);
-
-        if (! is_array($entry)) {
-            continue;
-        }
-
-        $isCompaction = (($entry['type'] ?? '') === 'system' && ($entry['subtype'] ?? '') === 'compact_boundary')
-            || (($entry['isCompactSummary'] ?? false) === true);
-
-        if ($isCompaction) {
-            $entries = [];
-            $failedToolIds = [];
-            $toolResults = [];
-
-            continue;
-        }
-
-        $entries[] = $entry;
-
-        if (($entry['type'] ?? '') === 'user' && is_array($entry['message']['content'] ?? null)) {
-            foreach ($entry['message']['content'] as $block) {
-                if (($block['type'] ?? '') !== 'tool_result') {
-                    continue;
-                }
-
-                $id = (string) ($block['tool_use_id'] ?? '');
-
-                if (($block['is_error'] ?? false) === true) {
-                    $failedToolIds[$id] = true;
-                }
-
-                $toolResults[$id] = boostBlockText($block['content'] ?? '');
-            }
-        }
-    }
-
-    $events = [];
-
-    foreach ($entries as $entry) {
-        $time = (string) ($entry['timestamp'] ?? '');
-        $type = $entry['type'] ?? '';
-
-        if ($type === 'user' && boostIsUserPrompt($entry)) {
-            $events[] = ['kind' => 'prompt', 'value' => '', 'time' => $time];
-
-            continue;
-        }
-
-        if ($type !== 'assistant' || ! is_array($entry['message']['content'] ?? null)) {
-            continue;
-        }
-
-        foreach ($entry['message']['content'] as $block) {
-            if (($block['type'] ?? '') !== 'tool_use') {
-                continue;
-            }
-
-            $id = (string) ($block['id'] ?? '');
-
-            if (isset($failedToolIds[$id])) {
-                continue;
-            }
-
-            $name = (string) ($block['name'] ?? '');
-            $input = is_array($block['input'] ?? null) ? $block['input'] : [];
-
-            $event = match (true) {
-                $name === 'Read' => ['kind' => 'read', 'value' => (string) boostRelativePath((string) ($input['file_path'] ?? ''), $root)],
-                $name === 'Bash' => ['kind' => 'bash', 'value' => (string) ($input['command'] ?? '')],
-                $name === 'Skill' => ['kind' => 'skill', 'value' => (string) ($input['skill'] ?? '')],
-                str_ends_with($name, 'search-docs') => ['kind' => 'search_docs', 'value' => ''],
-                in_array($name, ['Agent', 'Task'], true) => ['kind' => 'agent', 'value' => (string) ($input['subagent_type'] ?? ''), 'result' => $toolResults[$id] ?? ''],
-                in_array($name, ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'], true) => ['kind' => 'edit', 'value' => (string) boostRelativePath((string) ($input['file_path'] ?? $input['notebook_path'] ?? ''), $root)],
-                default => null,
-            };
-
-            if ($event !== null) {
-                $events[] = $event + ['time' => $time];
-            }
-        }
-    }
-
-    return $events;
-}
-
-function boostIsUserPrompt(array $entry): bool
-{
-    if (($entry['isMeta'] ?? false) === true) {
-        return false;
-    }
-
-    $content = $entry['message']['content'] ?? null;
-
-    if (is_string($content)) {
-        return true;
-    }
-
-    foreach ((array) $content as $block) {
-        if (($block['type'] ?? '') === 'tool_result') {
-            return false;
-        }
-    }
-
-    return $content !== null;
-}
-
-function boostBlockText(mixed $content): string
-{
-    if (is_string($content)) {
-        return $content;
-    }
-
-    $text = '';
-
-    foreach ((array) $content as $block) {
-        if (is_array($block) && ($block['type'] ?? '') === 'text') {
-            $text .= $block['text'];
-        }
-    }
-
-    return $text;
 }
 
 function boostHasReadFile(array $events, string $relativePath): bool

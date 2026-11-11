@@ -9,6 +9,7 @@
 declare(strict_types=1);
 
 require __DIR__.'/lib.php';
+require __DIR__.'/review.php';
 
 $input = boostReadInput();
 $root = boostProjectDir($input);
@@ -22,7 +23,8 @@ $lines[] = 'Hook Claude Code menegakkan aturan Boost. Perubahan file ditolak sam
 $lines[] = '1. Setiap file di `.ai/rules` yang glob-nya cocok dengan path target sudah dibaca dengan tool Read.';
 $lines[] = '2. Skill yang dipetakan ke path target sudah dimuat dengan tool Skill.';
 $lines[] = '3. Untuk kode aplikasi, tool `search-docs` sudah dipanggil minimal sekali.';
-$lines[] = '4. Sebelum giliran selesai: format, static analysis, dan test harus lolos, dan subagent `'.($config['review']['agent'] ?? 'boost-reviewer').'` harus memberi VERDICT: PASS untuk perubahan kode aplikasi. Jalankan reviewer di latar depan, tanpa run_in_background, supaya laporannya terbaca.';
+$lines[] = '4. Sebelum giliran selesai: format, static analysis, dan test harus lolos.';
+$lines[] = boostReviewPolicyLine($config['review'] ?? []);
 $lines[] = '5. Rules berlaku untuk kode yang kamu tulis atau ubah. Jangan mengubah kode lama di luar permintaan demi lolos gate atau review, dan jangan menulis keputusan atas nama pemilik. Laporkan hal seperti itu ke user di laporan akhir.';
 
 if ($source === 'compact') {
@@ -62,3 +64,18 @@ boostEmit([
         'additionalContext' => implode("\n", $lines),
     ],
 ]);
+
+function boostReviewPolicyLine(array $review): string
+{
+    $agent = (string) ($review['agent'] ?? 'boost-reviewer');
+
+    if (! ($review['enabled'] ?? false)) {
+        return 'Review otomatis dimatikan di proyek ini.';
+    }
+
+    return match (boostReviewMode($review)) {
+        'every_turn' => 'Setiap giliran yang mengubah kode aplikasi harus berakhir dengan subagent `'.$agent.'` memberi VERDICT: PASS. Subagent berjalan di latar belakang, jadi tunggu laporannya masuk dan jangan jalankan ulang.',
+        'on_commit' => '`git commit` ditahan sampai subagent `'.$agent.'` memberi VERDICT: PASS untuk perubahan yang akan di-commit. Jangan menjalankan reviewer di tengah pekerjaan.',
+        default => 'Review tidak berjalan otomatis dan mahal. Jangan menjalankan `'.$agent.'` sendiri di tengah pekerjaan. Setelah fitur selesai, beri tahu user bahwa review bisa dijalankan dengan /review-fitur. Jalankan perintah itu hanya saat user meminta atau menyatakan fitur sudah sesuai.',
+    };
+}

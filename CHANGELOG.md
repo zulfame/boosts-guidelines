@@ -10,6 +10,42 @@ Arti nomor versi di proyek ini:
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-12
+
+Perbaikan dari pemakaian 1.1.0 di proyek nyata (satu sesi panjang di proyek Laravel yang sudah berjalan): review berulang di tengah pekerjaan mahal, dan gate tidak bisa membaca vonis reviewer.
+
+### Added
+
+- `review.mode` di `boost-gate.json`: `on_request` (bawaan), `on_commit`, atau `every_turn`. Gate commit untuk `on_commit` menahan `git commit` sampai reviewer memberi `PASS` untuk perubahan yang belum di-commit.
+- Perintah `/review-fitur` (`.claude/commands/review-fitur.md`): review satu kali untuk seluruh perubahan fitur, dengan paling banyak satu review ulang untuk berkas yang diperbaiki. Berkas yang direview ditentukan `php .claude/hooks/review-scope.php [base]`, yang menerima base commit atau branch untuk fitur yang sudah di-commit sebagian.
+- Kode hasil generate Wayfinder (`resources/js/actions`, `resources/js/routes`, `resources/js/wayfinder`) masuk `exempt` bawaan, sehingga tidak ikut dihitung sebagai perubahan atau direview.
+- Bagian "Mode review dan biaya" di `docs/laravel-boost.md`: perbandingan mode, cara kerja laporan subagent di latar belakang, dan angka biaya dari sesi nyata.
+
+### Changed
+
+- **Review tidak lagi berjalan di setiap giliran.** Bawaannya `on_request`: Stop gate hanya menjalankan format, static analysis, dan test, dan review dijalankan lewat `/review-fitur`. Perilaku lama tersedia dengan `"mode": "every_turn"`. Proyek yang memperbarui hook tanpa mengubah `boost-gate.json` otomatis memakai `on_request`.
+- `quality.max_blocks` bawaan turun dari 3 menjadi 1, pesan penahanan lebih ringkas (daftar berkas panjang diringkas, keluaran test dipotong 1500 karakter), dan kode warna ANSI dibuang dari keluaran test.
+- Konteks SessionStart menjelaskan kebijakan review sesuai mode dan melarang agent menjalankan reviewer sendiri di tengah pekerjaan pada mode `on_request`.
+- Reviewer menerima base commit atau branch di prompt (`git diff <base>`) untuk fitur yang sudah di-commit sebagian.
+- Hook dipecah menjadi `lib.php`, `transcript.php`, `shell.php`, dan `review.php` agar tiap file di bawah 400 baris.
+
+### Fixed
+
+- **Gate tidak bisa membaca vonis reviewer.** Claude Code selalu menjalankan subagent di latar belakang: panggilan Agent hanya menjawab "Async agent launched", dan laporan sebenarnya datang belakangan sebagai pesan terpisah. Gate hanya membaca jawaban peluncuran, sehingga selalu menganggap laporan "tanpa VERDICT" dan menahan giliran untuk review yang sudah selesai. Kini gate mencocokkan laporan lewat `agentId`, membaca `VERDICT:` di dalamnya (hanya baris yang diberi indentasi harness, jadi baris palsu di kolom nol diabaikan), dan meminta agent menunggu selama laporan belum masuk. Pada transkrip sesi nyata, 12 panggilan reviewer di konteks terakhir terbaca (7 `PASS`, 5 `FAIL`), sebelumnya semuanya tanpa vonis.
+- Instruksi "jalankan reviewer di latar depan" yang ditambahkan di 1.1.0 dihapus. Claude Code tidak menyediakan opsi latar depan, jadi instruksi itu tidak bisa dipenuhi dan tidak pernah terbukti berfungsi.
+- Isi heredoc dan string bertanda kutip yang berisi spasi tidak lagi dibaca sebagai jalur berkas. Sebelumnya `>` di dalam skrip atau teks membuat gate menolak perintah Bash dan menyebut potongan teks (misalnya `$roles` atau `*/`) sebagai berkas.
+
+### Hasil uji
+
+- **Sesi nyata, review sesuai permintaan:** fitur filter status pada daftar kategori produk selesai dalam 2 menit tanpa satu pun penahanan Stop gate dan tanpa reviewer yang dijalankan agent sendiri. Agent menutup laporan dengan menyebut `/review-fitur`. Perintah itu menjalankan `review-scope.php`, satu reviewer, membaca laporannya yang datang belakangan, dan menyimpulkan `PASS` tanpa review kedua (sekitar 20 detik). Satu kali jalan.
+- **Transkrip sesi nyata dari proyek lain (hanya dibaca):** 12 panggilan reviewer di konteks terakhir terbaca, 7 `PASS` dan 5 `FAIL`. Sebelum perbaikan, semuanya dianggap tanpa vonis.
+- **Simulasi hook, 33 skenario:** semua mode review, laporan belum masuk, `PASS`, `FAIL`, laporan agent lain, baris `VERDICT` palsu di kolom nol, edit sesudah review, gate commit, `max_blocks` 1, pembersihan ANSI, dan deteksi tulis Bash untuk heredoc dan string bertanda kutip.
+- Belum diuji di sesi nyata: jalur `FAIL` dengan perbaikan dan review ulang, mode `on_commit` dan `every_turn`.
+
+### Memperbarui proyek yang sudah adopsi
+
+Salin `template/.claude/hooks/*.php`, `template/.claude/commands/review-fitur.md`, dan `template/.claude/agents/boost-reviewer.md` ke proyek itu. Tambahkan `"mode": "on_request"` (atau mode lain) di bagian `review` pada `boost-gate.json` agar pilihannya terlihat. Kode hasil generate Wayfinder bisa ditambahkan ke `exempt`, dan `quality.max_blocks` diturunkan ke 1 jika masih 3. Jalankan `php artisan boost:update`.
+
 ## [1.1.0] - 2026-11-11
 
 Perbaikan dari uji adopsi dan pembuatan fitur oleh agent di proyek Laravel 12 yang belum memakai Boost (beberapa sesi Claude Code nyata, dinilai oleh penilai independen).
@@ -77,7 +113,8 @@ Versi pertama. Diuji dengan Laravel 13.40, Laravel Boost 2.10.4, Laravel MCP 1.1
 - Panduan lengkap Laravel Boost di `docs/laravel-boost.md`.
 - Installer `scripts/install.php` dengan deteksi skill, PHPStan, Pest, Pint, dan package manager.
 
-[Unreleased]: https://github.com/zulfame/boosts-guidelines/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/zulfame/boosts-guidelines/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/zulfame/boosts-guidelines/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/zulfame/boosts-guidelines/releases/tag/v1.1.0
 [1.0.1]: https://github.com/zulfame/boosts-guidelines/commit/43cfd85
 [1.0.0]: https://github.com/zulfame/boosts-guidelines/commit/78007ed

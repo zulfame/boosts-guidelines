@@ -117,7 +117,7 @@ Jika belum ada, salin `boosts-guidelines/stubs/PRD.md` ke `PROYEK/memory/PRD.md`
 File berikut harus masuk ke git:
 
 - `.ai/` (guidelines dan rules),
-- `.claude/settings.json`, `.claude/hooks/`, `.claude/agents/`,
+- `.claude/settings.json`, `.claude/hooks/`, `.claude/agents/`, `.claude/commands/`,
 - `tests/Unit/ArchTest.php`,
 - `docs/decisions.md`, `memory/PRD.md`,
 - `.env.example`.
@@ -130,15 +130,15 @@ Minta user membuka sesi Claude Code baru di `PROYEK`, lalu jalankan pemeriksaan 
 
 Pemeriksaan dibagi dua tahap karena Stop gate hanya bekerja jika perubahan masih ada saat giliran selesai. Jika perubahan uji dikembalikan di giliran yang sama, isi file sudah kembali seperti semula dan gate tidak punya apa pun untuk diperiksa.
 
-**Tahap A: satu giliran, perubahan uji tetap dibiarkan.**
+**Tahap A: dua pesan, perubahan uji tetap dibiarkan.**
 
 | # | Pemeriksaan | Hasil yang diharapkan |
 | --- | --- | --- |
 | 1 | Tanyakan kepada agent: "Apa aturan Boost gate di proyek ini?" | Agent menyebut syarat gate. Ini membuktikan hook SessionStart berjalan |
 | 2 | Minta agent menjelaskan lebih jelas satu baris komentar di model yang lolos `vendor/bin/pint --test <file>`, tanpa persiapan | Edit pertama ditolak dengan daftar rule, skill, dan `search-docs` |
 | 3 | Biarkan agent memenuhi syaratnya lalu mengulang edit | Edit diizinkan |
-| 4 | Biarkan agent menyelesaikan giliran **dengan perubahan uji masih ada** | Stop gate menjalankan Pint dan test, lalu meminta review dari `boost-reviewer` |
-| 5 | Biarkan agent memanggil `boost-reviewer` | Subagent tersedia dan menutup laporan dengan `VERDICT: PASS` atau `FAIL` |
+| 4 | Biarkan agent menyelesaikan giliran **dengan perubahan uji masih ada** | Stop gate menjalankan Pint dan test, lalu giliran selesai tanpa review (mode bawaan `on_request`) |
+| 5 | Di pesan berikutnya, jalankan `/review-fitur` | Subagent `boost-reviewer` berjalan satu kali di latar belakang, laporannya masuk, dan ditutup dengan `VERDICT: PASS` atau `FAIL` |
 
 Reviewer menilai perubahan, bukan seluruh file. Jika file model itu punya pelanggaran lama, reviewer boleh melaporkannya sebagai CATATAN WARISAN, dan itu tidak memblokir. Pemeriksaan 5 dianggap gagal jika agent akhirnya memperbaiki kode lama di luar komentar uji atau menulis entri baru di `docs/decisions.md` hanya demi lolos review. Agent cukup menyebutkannya kepada user.
 
@@ -161,7 +161,9 @@ Semua penyesuaian gate ada di `.claude/hooks/boost-gate.json`:
 | --- | --- |
 | Peta skill kurang tepat untuk stack proyek, atau skill kustom di `.ai/skills` harus selalu dimuat untuk folder tertentu | `skills`, misalnya `{ "glob": "app/Exports/**", "skills": ["nama-skill"] }`. Tanpa entri, agent tetap bisa memilih skill itu dari `description`-nya |
 | Test suite lambat | `quality.tests`, misalnya `php artisan test --compact --parallel` |
-| Review terlalu mahal untuk proyek kecil | `review.enabled` menjadi `false` |
+| Kapan review dijalankan | `review.mode`: `on_request` (bawaan, lewat `/review-fitur`), `on_commit` (ditahan sampai review `PASS` sebelum `git commit`), atau `every_turn` (setiap giliran yang mengubah kode, paling mahal) |
+| Review tidak diperlukan sama sekali | `review.enabled` menjadi `false` |
+| Area yang tidak perlu direview, misalnya tampilan | Hapus globnya dari `review.globs` |
 | `search-docs` tidak perlu diwajibkan | `search_docs.required` menjadi `false` |
 | Folder tambahan perlu dijaga atau dikecualikan | `exempt`, `quality.watch`, `review.globs` |
 
@@ -172,5 +174,5 @@ Setiap penyesuaian yang melonggarkan gate dicatat di `docs/decisions.md`. Untuk 
 1. Jalankan installer dengan `--dry-run`.
 2. File yang dilaporkan "Dibiarkan" sudah berbeda dari versi boosts-guidelines. Bandingkan dengan `diff PROYEK/<path> /path/ke/boosts-guidelines/template/<path>`. Perbedaan bisa berasal dari rule tambahan yang direkam lewat `record-rule` di proyek itu, jadi jangan menimpanya begitu saja.
 3. Gabungkan perubahan dari boosts-guidelines secara manual, atau pakai `--force` hanya untuk file yang tidak punya perubahan lokal. `docs/decisions.md` tidak pernah ditimpa.
-4. Untuk pembaruan yang hanya menyentuh gate, salin file ini dari `template/` ke proyek: `.claude/hooks/*.php`, `.claude/agents/boost-reviewer.md`, dan `.ai/guidelines/production-standards.md`. Lalu jalankan `php artisan boost:update` agar guideline tersalin ke `AGENTS.md`. Daftar file yang berubah per versi ada di `CHANGELOG.md`.
+4. Untuk pembaruan yang hanya menyentuh gate, salin file ini dari `template/` ke proyek: `.claude/hooks/*.php`, `.claude/commands/review-fitur.md`, `.claude/agents/boost-reviewer.md`, dan `.ai/guidelines/production-standards.md`. Dari 1.2.0, review tidak lagi berjalan di setiap giliran. Proyek yang ingin perilaku lama menambahkan `"mode": "every_turn"` di bagian `review` pada `boost-gate.json`. Lalu jalankan `php artisan boost:update` agar guideline tersalin ke `AGENTS.md`. Daftar file yang berubah per versi ada di `CHANGELOG.md`.
 4. Jalankan `php artisan boost:index-rules` dan ulangi langkah 5.
