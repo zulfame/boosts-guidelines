@@ -13,7 +13,7 @@ Ikuti `ADOPTION.md` dari langkah 1 sampai 10 secara berurutan, dan laporkan hasi
 - Rules harus berlaku untuk semua stack Laravel (Blade, Livewire, Inertia dengan React, Vue, atau Svelte). Jangan menyebut file milik proyek tertentu atau detail satu teknologi frontend. Detail stack ditangani skill Boost.
 - Setiap file rule wajib diawali frontmatter `paths:` berisi glob. Gate dan Boost membaca index dari sana.
 - Tulis dokumentasi untuk dibaca manusia: alur dari yang paling sering dibutuhkan, kalimat lugas, tanpa tanda pisah panjang.
-- Catat setiap perubahan di `CHANGELOG.md`.
+- Catat setiap perubahan di `CHANGELOG.md` (format Keep a Changelog, versi Semantic Versioning), di bagian `Unreleased` sampai dirilis.
 
 ## Cara menguji perubahan
 

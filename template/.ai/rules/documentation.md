@@ -24,5 +24,6 @@ paths:
 - Keputusan yang mengubah aturan, menerima risiko, atau mengambil utang dicatat saat diambil: apa, mengapa, siapa yang memutuskan, kapan, dan kapan ditinjau ulang.
 - Dokumen menjelaskan kode apa adanya. Perubahan perilaku belum selesai sampai dokumennya ikut diperbarui.
 - Changelog menyebut apa yang berubah, apa yang tidak kompatibel, dan cara kembali untuk perubahan yang tidak bisa dibatalkan.
+- Format changelog mengikuti Keep a Changelog: bagian `Unreleased` di paling atas, lalu setiap versi dengan tanggal absolut, dikelompokkan per jenis (`Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`). Nomor versi mengikuti Semantic Versioning.
 - Dokumentasi API dibuat dari kode atau skema jika memungkinkan, bukan ditulis tangan terpisah.
 - Tulis lugas dengan tanggal absolut (YYYY-MM-DD), tanpa angka karangan.
