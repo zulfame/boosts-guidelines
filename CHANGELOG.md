@@ -10,6 +10,10 @@ Arti nomor versi di proyek ini:
 
 ## [Unreleased]
 
+### Changed
+
+- Status verifikasi di `README.md` memuat pemakaian di proyek nyata (jalur `FAIL` lalu `PASS` pada `/review-fitur`, tes proyek starter lulus) dan versi Pest yang diuji. Tidak ada perubahan pada `template/`, `stubs/`, atau installer, jadi isi rilis 1.3.0 tidak berubah.
+
 ## [1.3.0] - 2026-11-15
 
 Disamakan dengan penyesuaian satu proyek yang memakai 1.2.0.
