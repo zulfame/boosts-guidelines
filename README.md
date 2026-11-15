@@ -45,6 +45,7 @@ Repositori ini menambahkan dua hal di atas Boost:
 | `stubs/PRD.md` | Kerangka `memory/PRD.md` |
 | `docs/laravel-boost.md` | Panduan lengkap Laravel Boost: pemakaian, kustomisasi, cara kerja, dan temuan pengujian |
 | `docs/examples/boost-gate.inertia-react.json` | Contoh konfigurasi gate hasil installer untuk proyek Inertia React |
+| `docs/examples/feature-workflow.md` | Contoh guideline opsional untuk alur fitur baru, bagi proyek yang agent-nya sering melewati langkah persiapan |
 
 ## Mulai cepat
 

@@ -397,7 +397,7 @@ function frontendCheck(string $target): string
         default => 'npm run',
     };
 
-    foreach (['types:check', 'typecheck', 'type-check'] as $script) {
+    foreach (['check', 'types:check', 'typecheck', 'type-check'] as $script) {
         if (isset($scripts[$script])) {
             return "{$runner} {$script}";
         }

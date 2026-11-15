@@ -16,7 +16,8 @@ arch('application code reads configuration through config() instead of env()')
 
 arch('models extend the Eloquent base model')
     ->expect('App\Models')
-    ->toExtend(Model::class);
+    ->toExtend(Model::class)
+    ->ignoring('App\Models\Concerns');
 
 arch('controllers do not build raw database queries')
     ->expect('App\Http\Controllers')

@@ -10,6 +10,25 @@ Arti nomor versi di proyek ini:
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-15
+
+Disamakan dengan penyesuaian satu proyek yang memakai 1.2.0.
+
+### Added
+
+- `docs/examples/feature-workflow.md`: contoh guideline opsional untuk alur fitur baru (baca rule dengan Read, `search-docs` per API, `database-schema`, satu fitur per sesi). Tidak ikut `template/`, karena guideline menambah konteks di setiap sesi.
+- Tip di `docs/laravel-boost.md`: simpan tabel status review per fitur beserta commit acuan, lalu jalankan `/review-fitur <commit acuan>`.
+
+### Changed
+
+- `review.globs` bawaan hanya memuat backend (`app`, `bootstrap/app.php`, `config`, `database`, `routes`). Tampilan (`resources/js`, `resources/views`) tidak lagi direview secara bawaan karena direvisi berkali-kali dan diperiksa langsung oleh pemilik. Tambahkan globnya jika tampilan perlu direview. Proyek yang sudah adopsi tidak berubah sampai `boost-gate.json` dibuat ulang (`install.php --force`) atau diedit.
+- Installer memakai script `check` di `package.json` (bila ada) sebagai `quality.frontend`, sebelum `types:check` dan `typecheck`.
+- `/review-fitur` mewajibkan penyimpangan dari rule dicatat `diusulkan` di `docs/decisions.md` sebelum reviewer dijalankan, supaya tidak ada putaran `FAIL`, perbaikan, dan review ulang hanya karena catatan belum ada.
+
+### Fixed
+
+- Arch test "models extend the Eloquent base model" gagal untuk trait di `App\Models\Concerns`. Namespace itu kini dikecualikan.
+
 ## [1.2.0] - 2026-11-12
 
 Perbaikan dari pemakaian 1.1.0 di proyek nyata (satu sesi panjang di proyek Laravel yang sudah berjalan): review berulang di tengah pekerjaan mahal, dan gate tidak bisa membaca vonis reviewer.
@@ -113,7 +132,8 @@ Versi pertama. Diuji dengan Laravel 13.40, Laravel Boost 2.10.4, Laravel MCP 1.1
 - Panduan lengkap Laravel Boost di `docs/laravel-boost.md`.
 - Installer `scripts/install.php` dengan deteksi skill, PHPStan, Pest, Pint, dan package manager.
 
-[Unreleased]: https://github.com/zulfame/boosts-guidelines/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/zulfame/boosts-guidelines/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/zulfame/boosts-guidelines/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/zulfame/boosts-guidelines/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/zulfame/boosts-guidelines/releases/tag/v1.1.0
 [1.0.1]: https://github.com/zulfame/boosts-guidelines/commit/43cfd85

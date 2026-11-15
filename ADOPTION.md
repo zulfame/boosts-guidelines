@@ -163,7 +163,7 @@ Semua penyesuaian gate ada di `.claude/hooks/boost-gate.json`:
 | Test suite lambat | `quality.tests`, misalnya `php artisan test --compact --parallel` |
 | Kapan review dijalankan | `review.mode`: `on_request` (bawaan, lewat `/review-fitur`), `on_commit` (ditahan sampai review `PASS` sebelum `git commit`), atau `every_turn` (setiap giliran yang mengubah kode, paling mahal) |
 | Review tidak diperlukan sama sekali | `review.enabled` menjadi `false` |
-| Area yang tidak perlu direview, misalnya tampilan | Hapus globnya dari `review.globs` |
+| Review juga untuk tampilan (bawaannya hanya backend) | Tambahkan `resources/js/**` atau `resources/views/**` ke `review.globs` |
 | `search-docs` tidak perlu diwajibkan | `search_docs.required` menjadi `false` |
 | Folder tambahan perlu dijaga atau dikecualikan | `exempt`, `quality.watch`, `review.globs` |
 

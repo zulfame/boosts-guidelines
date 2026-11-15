@@ -574,7 +574,9 @@ Review adalah bagian paling mahal dari gate, jadi kapan ia berjalan bisa dipilih
 | `on_commit` | Otomatis sebelum `git commit`: commit ditahan sampai review `PASS` untuk perubahan yang belum di-commit | Tim yang meng-commit satu kali per fitur |
 | `every_turn` | Setiap giliran yang mengubah kode aplikasi | Pekerjaan yang jarang direvisi dan butuh penegakan paling ketat |
 
-Dengan `on_request`, Stop gate tetap menjalankan format, static analysis, dan test setiap kali ada perubahan, karena itu murah. `/review-fitur` menentukan berkas lewat `php .claude/hooks/review-scope.php [base]`: perubahan terhadap `HEAD` (atau base commit atau branch yang kamu berikan, bila fitur sudah di-commit sebagian), dibatasi `review.globs` dan tanpa path di `exempt`. Reviewer dijalankan satu kali, temuan BLOKIR diperbaiki, lalu paling banyak satu review ulang untuk berkas yang diperbaiki. Area yang tidak perlu direview, misalnya tampilan, cukup dihapus dari `review.globs`.
+Dengan `on_request`, Stop gate tetap menjalankan format, static analysis, dan test setiap kali ada perubahan, karena itu murah. `/review-fitur` menentukan berkas lewat `php .claude/hooks/review-scope.php [base]`: perubahan terhadap `HEAD` (atau base commit atau branch yang kamu berikan, bila fitur sudah di-commit sebagian), dibatasi `review.globs` dan tanpa path di `exempt`. Reviewer dijalankan satu kali, temuan BLOKIR diperbaiki, lalu paling banyak satu review ulang untuk berkas yang diperbaiki. Bawaannya `review.globs` hanya memuat backend (`app`, `bootstrap/app.php`, `config`, `database`, `routes`), karena tampilan biasanya direvisi berkali-kali dan diperiksa langsung oleh pemilik. Tambahkan `resources/js/**` atau `resources/views/**` jika tampilan juga perlu direview. Untuk fitur yang seluruhnya tampilan, `review-scope.php` menghasilkan daftar kosong dan review tidak berjalan.
+
+Catatan kecil yang terbukti berguna di satu proyek: simpan tabel fitur beserta status review dan commit sebelum fitur dimulai (misalnya `docs/review-status.md`), lalu jalankan `/review-fitur <commit acuan>`. Dengan begitu hanya perubahan fitur itu yang direview, dan tidak ada fitur yang diulang atau terlewat.
 
 Claude Code menjalankan subagent di latar belakang. Panggilan Agent hanya menjawab "Async agent launched", dan laporan sebenarnya datang belakangan sebagai pesan terpisah dari harness. Gate mencocokkan laporan itu lewat `agentId` dan membaca baris `VERDICT:` di dalamnya. Selama laporan belum masuk, gate meminta agent menunggu, bukan menjalankan reviewer lagi. Hanya baris laporan yang diberi indentasi oleh harness yang dibaca, sehingga baris `VERDICT` palsu di kolom nol diabaikan.
 
@@ -590,7 +592,7 @@ Biaya yang perlu diketahui dari pemakaian nyata, bukan perkiraan umum:
 `tests/Unit/ArchTest.php` memakai fitur arch test bawaan Pest. Isinya preset `php`, `security`, dan `laravel` dari Pest, ditambah tujuh aturan:
 
 - kode aplikasi tidak memanggil `env()`,
-- model meng-extend Eloquent `Model`,
+- model meng-extend Eloquent `Model` (trait di `App\Models\Concerns` dikecualikan),
 - controller tidak memakai facade `DB`,
 - Form Request meng-extend `FormRequest` dan berakhiran `Request`,
 - Action tidak memakai `request()`, `session()`, `redirect()`, atau `response()`,

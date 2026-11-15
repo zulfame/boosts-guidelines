@@ -135,9 +135,7 @@
             "bootstrap/app.php",
             "config/**",
             "database/**",
-            "routes/**",
-            "resources/js/**",
-            "resources/views/**"
+            "routes/**"
         ]
     }
 }
