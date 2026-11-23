@@ -27,3 +27,7 @@ paths:
 - Format changelog mengikuti Keep a Changelog: bagian `Unreleased` di paling atas, lalu setiap versi dengan tanggal absolut, dikelompokkan per jenis (`Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`). Nomor versi mengikuti Semantic Versioning.
 - Dokumentasi API dibuat dari kode atau skema jika memungkinkan, bukan ditulis tangan terpisah.
 - Tulis lugas dengan tanggal absolut (YYYY-MM-DD), tanpa angka karangan.
+
+## Catatan operasional ditulis di README
+- Setiap fitur yang butuh tindakan dari pemilik atau operator agar berjalan benar dicatat di README, di commit yang sama dengan fiturnya: perintah artisan yang harus dijalankan, pengaturan atau data referensi yang harus diisi, hak akses yang harus dicentang, dan variabel env. Sebutkan juga di laporan akhir.
+- Catatan itu juga masuk `memory/PRD.md` bila memengaruhi kondisi produk.

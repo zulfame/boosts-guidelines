@@ -20,7 +20,7 @@ Laravel Boost memberi agent guidelines, skill, tool MCP, dan project rules. Semu
 
 Repositori ini menambahkan dua hal di atas Boost:
 
-1. **Standar kode produksi** yang berlaku umum: 2 guideline dan 80 rules di 28 file, dalam bahasa Indonesia.
+1. **Standar kode produksi** yang berlaku umum: 2 guideline dan 86 rules di 28 file, dalam bahasa Indonesia.
 2. **Gate penegak** yang memaksa agent membaca rules, memuat skill, dan memanggil `search-docs` sebelum mengedit, serta memastikan format, static analysis, dan test lolos sebelum giliran selesai. Review dijalankan sekali per fitur lewat `/review-fitur`.
 
 ## Isi repositori
@@ -45,6 +45,7 @@ Repositori ini menambahkan dua hal di atas Boost:
 | `stubs/PRD.md` | Kerangka `memory/PRD.md` |
 | `docs/laravel-boost.md` | Panduan lengkap Laravel Boost: pemakaian, kustomisasi, cara kerja, dan temuan pengujian |
 | `docs/examples/boost-gate.inertia-react.json` | Contoh konfigurasi gate hasil installer untuk proyek Inertia React |
+| `docs/examples/agent-conduct.md` | Contoh guideline opsional untuk cara agent melapor, bertanya, dan berkomitmen (perilaku, bukan standar kode) |
 | `docs/examples/feature-workflow.md` | Contoh guideline opsional untuk alur fitur baru, bagi proyek yang agent-nya sering melewati langkah persiapan |
 
 ## Mulai cepat

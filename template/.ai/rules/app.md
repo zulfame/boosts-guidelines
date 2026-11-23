@@ -37,3 +37,12 @@ paths:
 - Simpan dan bandingkan waktu dalam UTC (`'timezone' => 'UTC'` di `config/app.php`), dan konversi ke zona waktu pengguna hanya saat ditampilkan.
 - Uang disimpan sebagai integer satuan terkecil (misalnya sen), dengan kolom mata uang jika mendukung lebih dari satu mata uang. Format hanya di lapisan tampilan.
 - Nilai domain yang berulang atau terbatas (status, tipe, role) dibuat sebagai enum di `app/Enums/`, bukan string yang tersebar.
+
+## Kode khusus satu varian ditaruh di folder per varian
+- Alur, aturan, dan integrasi yang hanya berlaku untuk satu varian (produk, tenant, atau mitra) ditaruh di subfolder bernama varian itu: `app/Actions/<Varian>/`, `app/Http/Controllers/<Varian>/`, `app/Http/Requests/<Varian>/`, dan klien integrasinya di `app/Services/<Mitra>/`. Jangan dicampur ke folder yang dipakai semua varian.
+- Yang berlaku untuk semua varian tetap di folder bersama. Perbedaan antarvarian diatur lewat parameter (kolom, config, atau enum), bukan percabangan berdasarkan nama varian.
+- Kode lama tidak dipindahkan hanya demi aturan ini. Kode yang khusus satu varian ditempatkan di foldernya begitu muncul.
+
+## Path berkas di penyimpanan disusun di satu tempat
+- Path berkas yang disimpan ke disk (lokal, S3, SFTP) disusun di satu class atau enum, tidak dirakit di tiap kode yang menyimpan.
+- Susunannya memisahkan tingkat akses dan umur data, misalnya `{tingkat}/{tahun}/{folder}/{nama file}`, dengan `tingkat` bernilai `public` atau `private`. Dokumen yang berisi data pribadi atau rahasia masuk `private`. Hanya yang memang boleh diakses umum masuk `public`.

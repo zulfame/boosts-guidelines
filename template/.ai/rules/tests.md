@@ -27,3 +27,7 @@ paths:
 - Test yang kadang gagal (flaky) diperbaiki di perubahan yang sama, tidak di-retry, dilewati, atau dihapus diam-diam.
 - Test yang tidak dijalankan atau dilewati dilaporkan apa adanya, tidak pernah disebut lolos.
 - Target coverage minimal 80% untuk kode baru. Ukur dengan `--coverage` jika pcov atau xdebug tersedia. Jika belum bisa diukur, sebutkan di laporan.
+
+## Test dan pengembangan tidak menulis ke layanan nyata
+- Test memakai fake untuk penyimpanan, antrean, email, dan HTTP (`Storage::fake()`, `Queue::fake()`, `Mail::fake()`, `Http::fake()`). Test tidak memakai koneksi nyata, termasuk koneksi yang diisi di database kerja.
+- Untuk menguji tulis ke disk, tiru konfigurasi disk dengan `Storage::fake()`. Agent tidak menjalankan unggah, ubah nama, atau hapus ke penyimpanan nyata yang terhubung, termasuk lewat tinker, skrip, atau browser. Memeriksa koneksi nyata cukup dengan membaca (daftar folder, `directoryExists`), dan keluarannya cukup jumlah dan jenis, bukan isi atau nama berkas.

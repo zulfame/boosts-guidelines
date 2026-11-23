@@ -10,6 +10,20 @@ Arti nomor versi di proyek ini:
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-23
+
+Aturan yang dipakai pemilik saat membangun aplikasi dan belum ada di kit (kini 86 rules).
+
+### Added
+
+- `app.md`: kode khusus satu varian (produk, tenant, atau mitra) ditaruh di subfolder bernama varian itu, dan perbedaan antarvarian lewat parameter, bukan percabangan nama.
+- `app.md`: path berkas di penyimpanan disusun di satu class atau enum, dengan pemisahan `public` dan `private`.
+- `tests.md`: test dan agent tidak menulis ke layanan atau penyimpanan nyata. Tulis ke disk diuji dengan `Storage::fake()`, dan koneksi nyata hanya dibaca.
+- `factories.md`: data referensi kecil ditulis di kode (konstanta atau array), CSV hanya untuk data besar, dan seeder serta command impor memakai satu sumber.
+- `documentation.md`: perintah, pengaturan, hak akses, dan env yang harus dilakukan pemilik dicatat di README di commit yang sama dengan fiturnya.
+- `frontend.md`: form sampai 6 isian memakai dialog, lebih dari itu halaman sendiri, dan teks layar tidak menjelaskan proses yang sudah diketahui pengguna.
+- `docs/examples/agent-conduct.md`: contoh guideline opsional tentang cara agent melapor (singkat, tanpa daftar utang atau saran fitur), bertanya (satu per giliran), memutuskan (bisnis oleh pemilik), berbahasa, dan commit. Tidak ikut `template/`, karena isinya perilaku dan dimuat di setiap sesi.
+
 ### Changed
 
 - Status verifikasi di `README.md` memuat pemakaian di proyek nyata (jalur `FAIL` lalu `PASS` pada `/review-fitur`, tes proyek starter lulus) dan versi Pest yang diuji. Tidak ada perubahan pada `template/`, `stubs/`, atau installer, jadi isi rilis 1.3.0 tidak berubah.
@@ -136,7 +150,8 @@ Versi pertama. Diuji dengan Laravel 13.40, Laravel Boost 2.10.4, Laravel MCP 1.1
 - Panduan lengkap Laravel Boost di `docs/laravel-boost.md`.
 - Installer `scripts/install.php` dengan deteksi skill, PHPStan, Pest, Pint, dan package manager.
 
-[Unreleased]: https://github.com/zulfame/boosts-guidelines/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/zulfame/boosts-guidelines/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/zulfame/boosts-guidelines/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/zulfame/boosts-guidelines/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/zulfame/boosts-guidelines/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/zulfame/boosts-guidelines/releases/tag/v1.1.0

@@ -25,6 +25,10 @@ paths:
 - Aksi yang tidak bisa dibatalkan (hapus, keluarkan anggota) meminta konfirmasi yang menjelaskan akibatnya.
 - 401 mengarahkan ke halaman login, 403 karena butuh konfirmasi password membuka dialog konfirmasi, dan 422 mengisi error per field.
 
+## Bentuk form dan teks layar
+- Form tambah atau ubah dengan paling banyak 6 isian (kontrol yang diisi pengguna, termasuk pilihan, centang, dan isian alasan) memakai dialog. Lebih dari 6 isian dibuat halaman sendiri, dengan seksi dan tombol Batal dan Simpan. Hapus dan konfirmasi singkat tetap dialog.
+- Teks layar (hint, keterangan, deskripsi) hanya memuat yang tidak terlihat dari label, seperti format atau batas. Alasan atau proses bisnis yang sudah diketahui pengguna ditulis di komentar kode atau dokumen, bukan di layar.
+
 ## State dan tampilan data
 - Setiap daftar dan tampilan data punya state loading, kosong, dan error. Setiap aksi memberi umpan balik yang terlihat.
 - Tanggal, waktu, angka, dan mata uang diformat di satu tempat per lapisan (satu helper), sesuai locale pengguna. Nilai untuk mesin tetap ISO dan angka polos.
